@@ -41,7 +41,7 @@ Every stage is a `Protocol` in `protocols.py`, resolved by name through `registr
 
 Key files:
 - `contracts.py` — all data types. Hot-path types (`AudioChunk`, `VadSegment`) are slotted dataclasses; serialized types (`Utterance`, `Transcript`, events) are pydantic. Do not convert one family to the other.
-- `pipeline.py` — stage wiring and execution. Currently implements the final tier only.
+- `pipeline.py` — stage wiring and execution. `transcribe()` runs the final tier; `stream()` runs the live tier then finalizes. Both share `_run_final`, so they cannot drift.
 - `normalize.py` — top-level, **not** under `evaluation/`. Both the dental layer and the eval harness depend on it; nesting it caused a circular import.
 
 ### Two-tier output
@@ -59,7 +59,7 @@ Key files:
 
 ## Working on this codebase
 
-**Domain WER, not WER, is the metric.** Overall WER is dominated by ordinary words and hides clinical-vocabulary failure — the published finding, and reproduced here: on the smoke set, WER 9.57% against DWER 18.52%. When changing anything that could affect accuracy, run `flowscribe eval` and compare DWER.
+**Domain WER, not WER, is the metric.** Overall WER is dominated by ordinary words and hides clinical-vocabulary failure — the published finding, and reproduced here: on the smoke set, WER 9.57% against DWER 15.38%. When changing anything that could affect accuracy, run `flowscribe eval` and compare DWER.
 
 **Normalization is part of the metric.** `normalize.py` decides what counts as an error. Two rules there are load-bearing and easy to break:
 - Number words fold to digits, but compounding only happens with an explicit multiplier ("hundred"/"thousand"). `"three two three"` must stay three probing depths, never `323`. There are regression tests for this.
