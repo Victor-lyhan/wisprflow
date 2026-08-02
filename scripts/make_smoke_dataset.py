@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Generate a synthetic smoke dataset for exercising the evaluation harness.
 
+Cross-platform: macOS (say), Windows (SAPI), Linux (espeak-ng). Deliberately so
+-- production is Windows, and an operator who cannot regenerate the test audio
+cannot check whether a change broke anything.
+
 WHAT THIS IS NOT
 ================
 This is not the dental gold set, and numbers from it must never be quoted as
@@ -28,10 +32,11 @@ from __future__ import annotations
 
 import argparse
 import json
-import shutil
-import subprocess
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent))
+from tts import UNUSABLE_VOICES, available_voices, backend_name, synthesize  # noqa: E402
 
 # Scenarios chosen to stress what general ASR gets wrong in dentistry: surface
 # abbreviations, tooth numbers in both spoken and digit form, charted number
@@ -89,44 +94,6 @@ SCRIPTS: list[tuple[str, str]] = [
     ),
 ]
 
-# Distinct voices stand in for speaker variation, and the accent spread
-# (US/GB/AU/IE) is deliberate given multilingual deployment.
-#
-# Only modern concatenative voices. macOS also ships legacy formant-synthesis
-# voices -- Fred, Kathy, Albert, Zarvox and friends -- whose output is barely
-# intelligible to a human, let alone an ASR model. Using them produced a 42% WER
-# that measured the synthesizer, not the recognizer: "carpules" came back as
-# "car appeals". A generator that quietly includes them yields numbers that look
-# like model failure and are nothing of the sort.
-VOICES = ["Samantha", "Daniel", "Karen", "Moira"]
-
-# Guard against reintroducing the above by name.
-UNUSABLE_VOICES = frozenset(
-    {
-        "Albert",
-        "Bad",
-        "Bahh",
-        "Bells",
-        "Boing",
-        "Bubbles",
-        "Cellos",
-        "Deranged",
-        "Fred",
-        "Good",
-        "Hysterical",
-        "Jester",
-        "Junior",
-        "Kathy",
-        "Organ",
-        "Superstar",
-        "Ralph",
-        "Trinoids",
-        "Whisper",
-        "Wobble",
-        "Zarvox",
-    }
-)
-
 
 def generate(out_dir: Path, voices: list[str], rate: int) -> list[dict]:
     audio_dir = out_dir / "audio"
@@ -134,26 +101,15 @@ def generate(out_dir: Path, voices: list[str], rate: int) -> list[dict]:
 
     records: list[dict] = []
     for sample_id, text in SCRIPTS:
-        voice = voices[len(records) % len(voices)]
+        # Cycle voices so the set is not overfitted to one timbre. Not a
+        # substitute for real speakers.
+        voice = voices[len(records) % len(voices)] if voices else None
         wav = audio_dir / f"{sample_id}.wav"
 
-        result = subprocess.run(
-            [
-                "say",
-                "-v",
-                voice,
-                "-r",
-                str(rate),
-                "-o",
-                str(wav),
-                "--data-format=LEI16@22050",
-                text,
-            ],
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode != 0:
-            print(f"  ! {sample_id}: {result.stderr.strip()}", file=sys.stderr)
+        try:
+            synthesize(text, wav, voice=voice, rate=rate)
+        except Exception as exc:  # noqa: BLE001 - report and keep going
+            print(f"  ! {sample_id}: {exc}", file=sys.stderr)
             continue
 
         records.append(
@@ -163,10 +119,10 @@ def generate(out_dir: Path, voices: list[str], rate: int) -> list[dict]:
                 "reference": text,
                 "language": "en",
                 "speakers": 1,
-                "metadata": {"voice": voice, "synthetic": True},
+                "metadata": {"voice": voice, "synthetic": True, "backend": backend_name()},
             }
         )
-        print(f"  + {sample_id:<16} [{voice}]")
+        print(f"  + {sample_id:<16} [{voice or 'default'}]")
 
     return records
 
@@ -177,15 +133,16 @@ def main() -> int:
     parser.add_argument("--rate", type=int, default=180, help="Speaking rate, words per minute.")
     args = parser.parse_args()
 
-    if shutil.which("say") is None:
+    if backend_name() is None:
         print(
-            "error: 'say' not found. This generator is macOS-only; on Windows use "
-            "real recordings or another TTS.",
+            "error: no speech synthesizer available. macOS needs 'say', Windows "
+            "needs PowerShell, Linux needs espeak-ng.",
             file=sys.stderr,
         )
         return 1
 
-    banned = UNUSABLE_VOICES & set(VOICES)
+    voices = available_voices()
+    banned = UNUSABLE_VOICES & set(voices)
     if banned:
         print(
             f"error: legacy formant-synthesis voice(s) selected: {', '.join(sorted(banned))}. "
@@ -194,8 +151,8 @@ def main() -> int:
         )
         return 1
 
-    print(f"Generating {len(SCRIPTS)} samples into {args.out} ...")
-    records = generate(args.out, VOICES, args.rate)
+    print(f"Generating {len(SCRIPTS)} samples into {args.out} via {backend_name()} ...")
+    records = generate(args.out, voices, args.rate)
     if not records:
         print("error: no samples generated", file=sys.stderr)
         return 1

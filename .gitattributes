@@ -1,0 +1,11 @@
+# Keep text files LF in the repo; Git checks out native line endings.
+* text=auto eol=lf
+
+# Data files parsed line-by-line -- pin them so a CRLF checkout cannot alter
+# lexicon or confusion parsing on Windows.
+*.txt text eol=lf
+*.jsonl text eol=lf
+
+*.wav binary
+*.mp3 binary
+*.flac binary

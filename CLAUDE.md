@@ -85,6 +85,10 @@ Separately, `dental/review.py` **flags** clinically confusable terms without cha
 
 `dental/teeth.py` converts between Universal, FDI, and Palmer explicitly. "Tooth 18" is the upper-right third molar in FDI and the lower-left second molar in Universal — opposite corners of the mouth. Guessing notation from context would silently record the wrong tooth.
 
+## Windows
+
+Production target, never yet run there. `.github/workflows/ci.yml` tests `windows-latest` on every push, including a Windows-only job that exercises real model wheels. See `docs/windows.md` for the manual path and the specific places breakage is expected — chiefly `GrowingWavSource`, which polls a WAV while another handle writes it and depends on Windows permitting shared reads.
+
 ## Status
 
 Working end to end: contracts, registry, config, audio ingestion (file / growing-WAV / queue), faster-whisper ASR, **streaming with LocalAgreement-2**, **LLM correction via Ollama**, review flagging, tooth notation, CLI, sinks, eval harness. 270 tests, mypy strict clean.
