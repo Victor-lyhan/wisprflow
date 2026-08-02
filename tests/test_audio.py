@@ -112,6 +112,31 @@ class TestFileAudioSource:
         with pytest.raises(AudioError, match="not found"):
             FileAudioSource(tmp_path / "nope.wav")
 
+    def test_corrupt_file_raises_audio_error_from_meta(self, tmp_path: Path) -> None:
+        """Regression: the handler named ``av.AVError``, which does not exist in
+        PyAV 12+. Evaluating it while unwinding raised ``AttributeError`` instead
+        of a clean ``AudioError``, so every decode failure surfaced as an
+        unrelated crash. The two pre-existing error tests missed it because
+        neither reaches PyAV -- one checks existence first, the other parses WAV
+        headers directly.
+        """
+        path = tmp_path / "corrupt.wav"
+        path.write_bytes(b"RIFF____WAVEgarbage" * 50)
+        with pytest.raises(AudioError):
+            FileAudioSource(path).meta()
+
+    def test_corrupt_file_raises_audio_error_from_chunks(self, tmp_path: Path) -> None:
+        path = tmp_path / "corrupt.wav"
+        path.write_bytes(b"RIFF____WAVEgarbage" * 50)
+        with pytest.raises(AudioError):
+            list(FileAudioSource(path).chunks())
+
+    def test_empty_file_raises_audio_error(self, tmp_path: Path) -> None:
+        path = tmp_path / "empty.wav"
+        path.write_bytes(b"")
+        with pytest.raises(AudioError):
+            FileAudioSource(path).meta()
+
 
 class TestGrowingWavSource:
     """The reader that makes 'transcribe while still recording' possible."""
