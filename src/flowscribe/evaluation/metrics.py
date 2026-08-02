@@ -12,15 +12,24 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass, field
+from typing import Any
 
 from ..dental.lexicon import Lexicon
 from ..dental.teeth import extract_tooth_numbers
 from ..normalize import tokenize
 
-__all__ = ["ScoreCard", "score", "word_error_rate", "domain_word_error_rate", "insertion_rate"]
+__all__ = [
+    "ScoreCard",
+    "score",
+    "word_error_rate",
+    "domain_word_error_rate",
+    "tooth_accuracy",
+    "insertion_rate",
+    "speaker_accuracy",
+]
 
 
-def _require_jiwer():
+def _require_jiwer() -> Any:
     try:
         import jiwer
     except ImportError as exc:  # pragma: no cover
@@ -198,3 +207,56 @@ def score(reference: str, hypothesis: str, lexicon: Lexicon | None = None) -> Sc
         reference, hypothesis
     )
     return card
+
+
+def speaker_accuracy(
+    reference: list[tuple[float, float, str]],
+    hypothesis: list[tuple[float, float, str]],
+) -> tuple[float, int, int]:
+    """Fraction of reference spans given the right speaker, after optimal mapping.
+
+    Deliberately *not* called DER. Frame-level diarization error rate scores
+    every frame and accounts for overlapped speech and false alarms; this scores
+    whole utterances, because that is the granularity the pipeline actually
+    assigns and therefore the granularity a reviewer sees. Reporting this under
+    the name DER would invite comparison against published DER figures it is not
+    commensurable with.
+
+    Labels are matched by best overlap before scoring, since diarizer labels are
+    arbitrary -- "SPEAKER_00" carries no meaning and may denote the patient in
+    one run and the dentist in the next.
+    """
+    if not reference:
+        return 0.0, 0, 0
+
+    # Total overlap between each (reference label, hypothesis label) pair.
+    overlaps: dict[tuple[str, str], float] = {}
+    for r_start, r_end, r_label in reference:
+        for h_start, h_end, h_label in hypothesis:
+            shared = min(r_end, h_end) - max(r_start, h_start)
+            if shared > 0:
+                key = (r_label, h_label)
+                overlaps[key] = overlaps.get(key, 0.0) + shared
+
+    # Greedy one-to-one assignment, strongest pairing first. Adequate for the
+    # handful of speakers in an operatory; an optimal assignment would need
+    # scipy and would not change the result at this scale.
+    mapping: dict[str, str] = {}
+    claimed: set[str] = set()
+    for (r_label, h_label), _ in sorted(overlaps.items(), key=lambda kv: -kv[1]):
+        if r_label not in mapping and h_label not in claimed:
+            mapping[r_label] = h_label
+            claimed.add(h_label)
+
+    hits = 0
+    for r_start, r_end, r_label in reference:
+        expected = mapping.get(r_label)
+        best_label, best_overlap = None, 0.0
+        for h_start, h_end, h_label in hypothesis:
+            shared = min(r_end, h_end) - max(r_start, h_start)
+            if shared > best_overlap:
+                best_label, best_overlap = h_label, shared
+        if best_label is not None and best_label == expected:
+            hits += 1
+
+    return hits / len(reference), len(reference), hits

@@ -24,6 +24,7 @@ from .contracts import (
     TARGET_SAMPLE_RATE,
     AudioChunk,
     AudioMeta,
+    Edit,
     Event,
     FinalUtterance,
     PartialUtterance,
@@ -274,7 +275,7 @@ class Pipeline:
         )
 
         corrected: Transcript | None = None
-        edits: list = []
+        edits: list[Edit] = []
         corrector = self.corrector
         if corrector is not None and utterances:
             t0 = time.perf_counter()

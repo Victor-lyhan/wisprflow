@@ -14,7 +14,14 @@ That shapes three decisions here:
 2. **Domain WER is the headline metric**, not overall WER.
 3. **Verbatim and corrected transcripts are both kept, with a diff** — so corrections are auditable and human verification stays possible.
 
-Reproduced on this repo's own smoke set: overall WER 9.57%, domain WER 18.52% — the clinical vocabulary fails at roughly twice the rate the headline number suggests.
+Reproduced on this repo's own smoke set, and then fixed:
+
+| | overall WER | domain WER |
+|---|---|---|
+| verbatim | 9.57% | **15.38%** |
+| corrected | 5.32% | **3.08%** |
+
+Without correction, clinical vocabulary fails at roughly twice the headline rate. With it, domain WER drops 80% relative and falls *below* general WER — the same inversion the study reported.
 
 ## Install
 
@@ -75,4 +82,8 @@ CDT procedure codes and SNODENT are American Dental Association copyright and re
 
 ## Status
 
-Phase 0 complete — contracts, registry, config, audio ingestion, faster-whisper backend, CLI, sinks, evaluation harness, 175 tests. Streaming policy, VAD, diarization, and the LLM corrector are next. See `Development.md`.
+Working end to end: batch and streaming transcription, LLM correction, review flagging, tooth notation conversion, evaluation harness. 270 tests, mypy strict clean.
+
+Streaming measured on a 15.9 s recording written to disk in real time: first partial at **1.30 s**, first confirmed text at **4.24 s**.
+
+Diarization is implemented but unverified — pyannote models are gated on Hugging Face and need a one-time `huggingface-cli login` plus accepting the model conditions. Silero VAD, the Parakeet ONNX backend, and Windows testing are outstanding. See `Development.md`.

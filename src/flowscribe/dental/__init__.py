@@ -9,7 +9,14 @@ The bundled lexicon is built only from freely redistributable sources.
 
 from .lexicon import Confusions, Lexicon, load_confusions, load_seed_lexicon
 from .review import flag_confusions
-from .teeth import extract_tooth_numbers
+from .teeth import (
+    extract_tooth_numbers,
+    fdi_to_universal,
+    palmer_to_universal,
+    tooth_name,
+    universal_to_fdi,
+    universal_to_palmer,
+)
 
 __all__ = [
     "Lexicon",
@@ -18,4 +25,9 @@ __all__ = [
     "load_confusions",
     "extract_tooth_numbers",
     "flag_confusions",
+    "universal_to_fdi",
+    "fdi_to_universal",
+    "universal_to_palmer",
+    "palmer_to_universal",
+    "tooth_name",
 ]

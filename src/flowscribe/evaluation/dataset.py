@@ -36,7 +36,7 @@ class Sample:
     reference: str
     language: str | None = None
     speakers: int | None = None
-    metadata: dict = field(default_factory=dict)
+    metadata: dict[str, object] = field(default_factory=dict)
 
 
 def iter_manifest(path: str | Path) -> Iterator[Sample]:

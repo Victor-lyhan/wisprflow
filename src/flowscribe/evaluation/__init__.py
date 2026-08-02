@@ -10,6 +10,7 @@ from .metrics import (
     domain_word_error_rate,
     insertion_rate,
     score,
+    speaker_accuracy,
     tooth_accuracy,
     word_error_rate,
 )
@@ -25,6 +26,7 @@ __all__ = [
     "domain_word_error_rate",
     "tooth_accuracy",
     "insertion_rate",
+    "speaker_accuracy",
     "normalize_text",
     "tokenize",
     "words_to_digits",

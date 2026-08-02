@@ -75,8 +75,22 @@ Key files:
 
 **Synthetic audio measures the harness, not accuracy.** `scripts/make_smoke_dataset.py` uses macOS `say`. It has no handpiece noise, no masks, no crosstalk, no disfluency. Never quote its numbers as accuracy figures. It also refuses legacy formant-synthesis voices (Fred, Kathy, Zarvox…) — those produced a 42% WER that measured the *synthesizer*, not the recognizer.
 
+### Correction is guarded, flagging is not correction
+
+`correct/guard.py` is safety-critical: it stands between LLM output and a patient record. Three checks reject a proposal — edit ratio, numeric token count, tooth reference count. Values may change (correcting a misheard tooth number is the point); counts may not.
+
+Separately, `dental/review.py` **flags** clinically confusable terms without changing them. This handles what correction structurally cannot: a misrecognition landing on *another valid clinical term* ("reversible pulpitis" for "irreversible pulpitis"). Nothing looks wrong, so similarity search can't find it — and an LLM inverting a diagnosis on inference is worse than the original error. Flags point; humans decide. Never make flagging auto-correct.
+
+### Tooth notation is never inferred
+
+`dental/teeth.py` converts between Universal, FDI, and Palmer explicitly. "Tooth 18" is the upper-right third molar in FDI and the lower-left second molar in Universal — opposite corners of the mouth. Guessing notation from context would silently record the wrong tooth.
+
 ## Status
 
-Phase 0 complete: contracts, registry, config, audio ingestion (including growing-file reader for live recording), faster-whisper backend, CLI, sinks, eval harness, 175 tests.
+Working end to end: contracts, registry, config, audio ingestion (file / growing-WAV / queue), faster-whisper ASR, **streaming with LocalAgreement-2**, **LLM correction via Ollama**, review flagging, tooth notation, CLI, sinks, eval harness. 270 tests, mypy strict clean.
 
-Not yet built: streaming policy (LocalAgreement-2), VAD backend, real diarizer (pyannote), LLM corrector, Parakeet ONNX backend, Windows packaging. See `Development.md`.
+Measured: domain WER 15.38% → 3.08% with correction; first partial at 1.30 s and first confirmed text at 4.24 s on a growing file.
+
+Implemented but **unverified**: `diarize/pyannote_diarizer.py` — pyannote models are HF-gated, so it needs `huggingface-cli login` plus accepting the model conditions before it can run at all.
+
+Not built: Silero VAD backend, Parakeet ONNX backend (the fast Windows CPU path), lexicon build from MeSH/RxNorm/UMLS, FastAPI service, Windows testing. See `Development.md`.

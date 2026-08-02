@@ -14,6 +14,8 @@ Only ``contracts`` and ``config`` are imported eagerly; engines load on first us
 so that uninstalled optional extras cost nothing.
 """
 
+from typing import Any
+
 from .config import (
     ASRConfig,
     Config,
@@ -85,7 +87,7 @@ __all__ = [
 ]
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> Any:
     """Defer pipeline import so ``import flowscribe`` stays cheap."""
     if name in ("Pipeline", "transcribe_file", "stream_file"):
         from . import pipeline

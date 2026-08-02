@@ -7,7 +7,7 @@ and plain-text formats discard word timings, confidences, and provenance.
 
 from __future__ import annotations
 
-from ..contracts import Transcript
+from ..contracts import Transcript, Utterance
 
 __all__ = ["JsonSink", "JsonlSink", "TextSink", "SrtSink", "VttSink"]
 
@@ -24,7 +24,7 @@ def _timestamp(seconds: float, *, comma: bool = True) -> str:
     return f"{hours:02d}:{minutes:02d}:{secs:02d}{sep}{millis:03d}"
 
 
-def _speaker_prefix(utterance) -> str:
+def _speaker_prefix(utterance: Utterance) -> str:
     """Prefer the clinical role over the raw diarization label when known."""
     label = utterance.role or utterance.speaker
     return f"{label}: " if label else ""

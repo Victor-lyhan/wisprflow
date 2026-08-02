@@ -103,7 +103,8 @@ class OllamaCorrector:
                 },
             )
             response.raise_for_status()
-            return response.json().get("message", {}).get("content", "")
+            content = response.json().get("message", {}).get("content", "")
+            return str(content) if content else None
         except (httpx.HTTPError, ValueError, KeyError):
             # A correction failure must never fail the transcription. The
             # verbatim transcript is the deliverable; correction is an
