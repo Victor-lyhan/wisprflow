@@ -1,0 +1,259 @@
+"""Pipeline assembly and execution.
+
+Wires configured backends into a runnable pipeline. Stages are resolved lazily,
+so a config with correction disabled never imports an LLM client.
+
+Scope note: this module implements the **final tier** -- full-context
+recognition over complete audio, which is the authoritative output. The live
+tier (LocalAgreement-2 confirmation and online diarization) builds on these same
+stages and lands in a later phase; it is not a separate pipeline.
+"""
+
+from __future__ import annotations
+
+import time
+from collections.abc import Iterable
+from dataclasses import dataclass
+from pathlib import Path
+
+import numpy as np
+
+from .audio.preprocess import NullPreprocessor, open_source
+from .config import Config
+from .contracts import (
+    TARGET_SAMPLE_RATE,
+    AudioChunk,
+    AudioMeta,
+    Transcript,
+    TranscriptionResult,
+    utterance_id,
+)
+from .errors import OfflineViolation
+from .protocols import ASREngine, AudioSource, Corrector, Diarizer, Preprocessor
+from .registry import ASR, CORRECTOR, DIARIZER
+
+__all__ = ["Pipeline", "RunStats", "transcribe_file"]
+
+
+@dataclass
+class RunStats:
+    """Timing for one run. Reported by the eval harness."""
+
+    audio_seconds: float = 0.0
+    ingest_seconds: float = 0.0
+    asr_seconds: float = 0.0
+    diarize_seconds: float = 0.0
+    correct_seconds: float = 0.0
+    edits: int = 0
+
+    @property
+    def total_seconds(self) -> float:
+        return self.ingest_seconds + self.asr_seconds + self.diarize_seconds + self.correct_seconds
+
+    @property
+    def real_time_factor(self) -> float:
+        """Processing time divided by audio duration. Below 1.0 is faster than real time."""
+        return self.total_seconds / self.audio_seconds if self.audio_seconds else 0.0
+
+
+def _check_offline(config: Config) -> None:
+    """Reject settings that would send audio off the machine.
+
+    Only the correction endpoint can reach the network at inference time, so it
+    is the only thing to validate -- but it carries the full transcript, which
+    makes it exactly the leak that matters.
+    """
+    if not config.offline_only or not config.correction.enabled:
+        return
+    endpoint = config.correction.endpoint
+    if not any(
+        endpoint.startswith(prefix)
+        for prefix in ("http://127.0.0.1", "http://localhost", "http://[::1]", "http://0.0.0.0")
+    ):
+        raise OfflineViolation(
+            f"offline_only is set but the correction endpoint is {endpoint!r}, "
+            "which is not loopback. Point it at a local inference server, or set "
+            "offline_only=False if sending transcripts to that host is intended."
+        )
+
+
+class Pipeline:
+    """A configured, runnable pipeline."""
+
+    def __init__(
+        self,
+        config: Config | None = None,
+        *,
+        asr: ASREngine | None = None,
+        diarizer: Diarizer | None = None,
+        corrector: Corrector | None = None,
+        preprocessor: Preprocessor | None = None,
+    ) -> None:
+        self.config = config or Config()
+        _check_offline(self.config)
+        # Must precede backend construction: these libraries read their
+        # environment at import time.
+        self.config.apply_offline_env()
+
+        self._asr = asr
+        self._diarizer = diarizer
+        self._corrector = corrector
+        self.preprocessor: Preprocessor = preprocessor or NullPreprocessor()
+        self.stats = RunStats()
+
+    # -- lazily constructed stages ----------------------------------------- #
+
+    @property
+    def asr(self) -> ASREngine:
+        if self._asr is None:
+            cfg = self.config.final
+            self._asr = ASR.create(
+                cfg.backend,
+                model=cfg.model,
+                device=cfg.device,
+                compute_type=cfg.compute_type,
+                beam_size=cfg.beam_size,
+                vad_filter=cfg.vad_filter,
+                model_dir=str(self.config.model_dir),
+                **cfg.options,
+            )
+        return self._asr
+
+    @property
+    def diarizer(self) -> Diarizer | None:
+        if not self.config.diarization.enabled:
+            return None
+        if self._diarizer is None:
+            cfg = self.config.diarization
+            self._diarizer = DIARIZER.create(
+                cfg.backend,
+                min_speakers=cfg.min_speakers,
+                max_speakers=cfg.max_speakers,
+                model_dir=str(self.config.model_dir),
+                **cfg.options,
+            )
+        return self._diarizer
+
+    @property
+    def corrector(self) -> Corrector | None:
+        if not self.config.correction.enabled:
+            return None
+        if self._corrector is None:
+            cfg = self.config.correction
+            self._corrector = CORRECTOR.create(
+                cfg.backend,
+                model=cfg.model,
+                endpoint=cfg.endpoint,
+                max_edit_ratio=cfg.max_edit_ratio,
+                lexicon_path=cfg.lexicon_path,
+                user_codes_path=cfg.user_codes_path,
+                **cfg.options,
+            )
+        return self._corrector
+
+    # -- execution ---------------------------------------------------------- #
+
+    def _ingest(self, source: AudioSource) -> tuple[AudioChunk, AudioMeta]:
+        """Drain a source into one contiguous buffer.
+
+        The final tier decodes complete audio in one pass: Whisper's accuracy
+        depends on surrounding context, so splitting here would cost quality for
+        no benefit. A source that is still recording simply blocks until it ends.
+
+        Memory is linear in duration -- roughly 230 MB per hour of float32 at
+        16 kHz, which is fine for a single appointment. Multi-hour audio should
+        be segmented by the caller.
+        """
+        pieces: list[np.ndarray] = []
+        for chunk in source.chunks():
+            processed = self.preprocessor.process(chunk)
+            if len(processed.pcm):
+                pieces.append(processed.pcm)
+
+        pcm = np.concatenate(pieces) if pieces else np.zeros(0, dtype=np.float32)
+        meta = source.meta()
+        if meta.duration is None:
+            meta = meta.model_copy(update={"duration": len(pcm) / TARGET_SAMPLE_RATE})
+        return AudioChunk(pcm=pcm, sample_rate=TARGET_SAMPLE_RATE, start=0.0, is_last=True), meta
+
+    def transcribe(
+        self, source: AudioSource, *, hotwords: Iterable[str] = ()
+    ) -> TranscriptionResult:
+        """Run the final tier over a source and return both transcripts."""
+        self.stats = RunStats()
+
+        t0 = time.perf_counter()
+        audio, meta = self._ingest(source)
+        self.stats.ingest_seconds = time.perf_counter() - t0
+        self.stats.audio_seconds = meta.duration or 0.0
+
+        t0 = time.perf_counter()
+        utterances = self.asr.transcribe(
+            audio, language=self.config.final.language, hotwords=hotwords
+        )
+        self.stats.asr_seconds = time.perf_counter() - t0
+
+        # Renumber so ids are contiguous and stable regardless of what the
+        # backend produced; SpeakerRelabel events reference these.
+        utterances = [
+            u.model_copy(update={"id": utterance_id(i)}) for i, u in enumerate(utterances)
+        ]
+
+        diarizer = self.diarizer
+        if diarizer is not None and utterances:
+            t0 = time.perf_counter()
+            utterances = diarizer.assign(
+                utterances, audio=audio, num_speakers=self.config.diarization.num_speakers
+            )
+            self.stats.diarize_seconds = time.perf_counter() - t0
+
+        verbatim = Transcript(
+            utterances=utterances,
+            tier="final",
+            audio=meta,
+            engine=getattr(self.asr, "name", self.config.final.backend),
+            model=self.config.final.model,
+            language=self.config.final.language
+            or next((u.language for u in utterances if u.language), None),
+        )
+
+        corrected: Transcript | None = None
+        edits: list = []
+        corrector = self.corrector
+        if corrector is not None and utterances:
+            t0 = time.perf_counter()
+            corrected, edits = corrector.correct(verbatim)
+            self.stats.correct_seconds = time.perf_counter() - t0
+            self.stats.edits = len(edits)
+
+        return TranscriptionResult(verbatim=verbatim, corrected=corrected, edits=edits)
+
+    def close(self) -> None:
+        for stage in (self._asr, self._diarizer, self._corrector):
+            closer = getattr(stage, "close", None)
+            if callable(closer):
+                closer()
+
+    def __enter__(self) -> Pipeline:
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        self.close()
+
+
+def transcribe_file(
+    path: str | Path,
+    config: Config | None = None,
+    *,
+    live: bool = False,
+    hotwords: Iterable[str] = (),
+) -> TranscriptionResult:
+    """Transcribe a file.
+
+    ``live=True`` reads a WAV that is still being written, returning once the
+    recording completes.
+    """
+    config = config or Config()
+    source = open_source(path, live=live, chunk_seconds=config.chunk_seconds)
+    with Pipeline(config) as pipeline:
+        return pipeline.transcribe(source, hotwords=hotwords)

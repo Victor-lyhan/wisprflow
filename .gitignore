@@ -1,0 +1,22 @@
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Never commit clinical audio, transcripts, or derived artifacts.
+data/
+audio/
+*.wav
+*.mp3
+*.m4a
+*.flac
+transcripts/
+models/
+.env
