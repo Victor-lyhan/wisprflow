@@ -81,12 +81,13 @@ __all__ = [
     # lazy
     "Pipeline",
     "transcribe_file",
+    "stream_file",
 ]
 
 
 def __getattr__(name: str):
     """Defer pipeline import so ``import flowscribe`` stays cheap."""
-    if name in ("Pipeline", "transcribe_file"):
+    if name in ("Pipeline", "transcribe_file", "stream_file"):
         from . import pipeline
 
         return getattr(pipeline, name)
