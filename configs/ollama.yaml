@@ -1,0 +1,36 @@
+# Local pipeline with LLM correction via Ollama.
+#
+#   ollama serve && ollama pull qwen3:8b
+#   flowscribe transcribe visit.wav -c configs/ollama.yaml --correct --show-edits
+#
+# offline_only stays true: the endpoint is loopback, so transcripts never leave
+# the machine.
+
+final:
+  backend: faster-whisper
+  model: large-v3
+  language: null # auto-detect; pin it for a known-monolingual clinic
+
+live:
+  backend: faster-whisper
+  model: large-v3-turbo
+  beam_size: 1
+
+correction:
+  enabled: true
+  backend: ollama
+  model: qwen3:8b
+  endpoint: http://127.0.0.1:11434
+  # Reject any proposal rewriting more than a quarter of an utterance -- that is
+  # paraphrasing, not terminology repair.
+  max_edit_ratio: 0.25
+  # Practice-supplied procedure codes go here. CDT and SNODENT are ADA copyright
+  # and are never bundled.
+  user_codes_path: null
+
+diarization:
+  enabled: false
+  backend: passthrough
+
+flag_confusable: true
+offline_only: true

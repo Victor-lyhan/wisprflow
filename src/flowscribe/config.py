@@ -60,10 +60,10 @@ class VADConfig(BaseModel):
 
 class DiarizationConfig(BaseModel):
     enabled: bool = True
-    backend: str = "null"
+    backend: str = "passthrough"
     """Offline backend, used for the authoritative pass."""
 
-    online_backend: str = "null"
+    online_backend: str = "passthrough"
     """Incremental backend, used while recording. Its labels are provisional."""
 
     num_speakers: int | None = None
@@ -78,7 +78,7 @@ class DiarizationConfig(BaseModel):
 
 class CorrectionConfig(BaseModel):
     enabled: bool = True
-    backend: str = "null"
+    backend: str = "passthrough"
     model: str = "qwen3:8b"
     endpoint: str = "http://127.0.0.1:11434"
     """Local inference server. Loopback only -- a remote endpoint would send PHI
@@ -121,6 +121,13 @@ class Config(BaseSettings):
     vad: VADConfig = Field(default_factory=VADConfig)
     diarization: DiarizationConfig = Field(default_factory=DiarizationConfig)
     correction: CorrectionConfig = Field(default_factory=CorrectionConfig)
+
+    flag_confusable: bool = True
+    """Flag clinically confusable terms for human review.
+
+    Cheap (a lexicon lookup, no model) and independent of the corrector, so it
+    stays on even with correction disabled. Catches the error class where a
+    misrecognition lands on another valid clinical term."""
 
     offline_only: bool = True
     """Forbid all network access during inference.

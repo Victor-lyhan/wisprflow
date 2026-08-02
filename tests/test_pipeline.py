@@ -96,7 +96,7 @@ class TestOfflineGuarantee:
         config = Config(
             offline_only=True,
             correction=CorrectionConfig(
-                enabled=True, backend="null", endpoint="http://api.example.com"
+                enabled=True, backend="passthrough", endpoint="http://api.example.com"
             ),
         )
         with pytest.raises(OfflineViolation, match="loopback"):
@@ -109,7 +109,7 @@ class TestOfflineGuarantee:
     def test_allows_loopback(self, endpoint: str) -> None:
         config = Config(
             offline_only=True,
-            correction=CorrectionConfig(enabled=True, backend="null", endpoint=endpoint),
+            correction=CorrectionConfig(enabled=True, backend="passthrough", endpoint=endpoint),
         )
         Pipeline(config)  # must not raise
 
@@ -117,7 +117,7 @@ class TestOfflineGuarantee:
         config = Config(
             offline_only=False,
             correction=CorrectionConfig(
-                enabled=True, backend="null", endpoint="http://api.example.com"
+                enabled=True, backend="passthrough", endpoint="http://api.example.com"
             ),
         )
         Pipeline(config)
@@ -159,7 +159,7 @@ class TestPipeline:
         """Both must survive so correction can be measured, not trusted."""
         from tests.conftest import FakeASREngine, FakeCorrector
 
-        config = Config(correction=CorrectionConfig(enabled=True, backend="null"))
+        config = Config(correction=CorrectionConfig(enabled=True, backend="passthrough"))
         pipeline = Pipeline(
             config,
             asr=FakeASREngine(text="depths on the buckle"),
@@ -176,7 +176,7 @@ class TestPipeline:
         diff is not verifiable."""
         from tests.conftest import FakeASREngine, FakeCorrector
 
-        config = Config(correction=CorrectionConfig(enabled=True, backend="null"))
+        config = Config(correction=CorrectionConfig(enabled=True, backend="passthrough"))
         pipeline = Pipeline(
             config, asr=FakeASREngine(text="depths on the buckle"), corrector=FakeCorrector()
         )
@@ -189,7 +189,7 @@ class TestPipeline:
     def test_diarizer_assigns_speakers(self, fake_asr, fake_diarizer, sine: np.ndarray) -> None:
         from flowscribe.config import DiarizationConfig
 
-        config = Config(diarization=DiarizationConfig(enabled=True, backend="null"))
+        config = Config(diarization=DiarizationConfig(enabled=True, backend="passthrough"))
         pipeline = Pipeline(config, asr=fake_asr, diarizer=fake_diarizer)
         result = pipeline.transcribe(ArrayAudioSource(sine))
         assert all(u.speaker is not None for u in result.verbatim.utterances)
@@ -199,7 +199,7 @@ class TestPipeline:
         real single-speaker result and would misattribute the patient."""
         from flowscribe.config import DiarizationConfig
 
-        config = Config(diarization=DiarizationConfig(enabled=True, backend="null"))
+        config = Config(diarization=DiarizationConfig(enabled=True, backend="passthrough"))
         result = Pipeline(config, asr=fake_asr).transcribe(ArrayAudioSource(sine))
         assert all(u.speaker is None for u in result.verbatim.utterances)
 

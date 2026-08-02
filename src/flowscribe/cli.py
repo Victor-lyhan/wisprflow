@@ -80,12 +80,12 @@ def transcribe(
     # Correction and diarization each need a real backend; the defaults are
     # no-ops, so silently producing unchanged output would look like the feature
     # ran and found nothing to do.
-    if correct and config.correction.backend == "null":
+    if correct and config.correction.backend in ("null", "passthrough"):
         _fail(
             "--correct needs a corrector backend. Set correction.backend in a config "
             f"file (available: {', '.join(CORRECTOR.names())})."
         )
-    if diarize and config.diarization.backend == "null":
+    if diarize and config.diarization.backend in ("null", "passthrough"):
         _fail(
             "--diarize needs a diarizer backend. Set diarization.backend in a config "
             f"file (available: {', '.join(DIARIZER.names())})."

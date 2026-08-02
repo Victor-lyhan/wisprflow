@@ -28,6 +28,8 @@ from .contracts import (
     TranscriptionResult,
     utterance_id,
 )
+from .dental.lexicon import load_confusions
+from .dental.review import flag_confusions
 from .errors import OfflineViolation
 from .protocols import ASREngine, AudioSource, Corrector, Diarizer, Preprocessor
 from .registry import ASR, CORRECTOR, DIARIZER
@@ -217,6 +219,12 @@ class Pipeline:
             or next((u.language for u in utterances if u.language), None),
         )
 
+        flags = (
+            flag_confusions(verbatim, load_confusions())
+            if self.config.flag_confusable and utterances
+            else []
+        )
+
         corrected: Transcript | None = None
         edits: list = []
         corrector = self.corrector
@@ -226,7 +234,7 @@ class Pipeline:
             self.stats.correct_seconds = time.perf_counter() - t0
             self.stats.edits = len(edits)
 
-        return TranscriptionResult(verbatim=verbatim, corrected=corrected, edits=edits)
+        return TranscriptionResult(verbatim=verbatim, corrected=corrected, edits=edits, flags=flags)
 
     def close(self) -> None:
         for stage in (self._asr, self._diarizer, self._corrector):

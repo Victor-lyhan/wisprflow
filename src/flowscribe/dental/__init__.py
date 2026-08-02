@@ -7,7 +7,15 @@ licensed practice supplies its own file via ``CorrectionConfig.user_codes_path``
 The bundled lexicon is built only from freely redistributable sources.
 """
 
-from .lexicon import Lexicon, load_seed_lexicon
+from .lexicon import Confusions, Lexicon, load_confusions, load_seed_lexicon
+from .review import flag_confusions
 from .teeth import extract_tooth_numbers
 
-__all__ = ["Lexicon", "load_seed_lexicon", "extract_tooth_numbers"]
+__all__ = [
+    "Lexicon",
+    "Confusions",
+    "load_seed_lexicon",
+    "load_confusions",
+    "extract_tooth_numbers",
+    "flag_confusions",
+]

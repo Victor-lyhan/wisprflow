@@ -21,9 +21,10 @@ from pathlib import Path
 
 from ..normalize import normalize_text
 
-__all__ = ["Lexicon", "load_seed_lexicon", "SEED_PATH"]
+__all__ = ["Lexicon", "load_seed_lexicon", "load_confusions", "SEED_PATH", "CONFUSIONS_PATH"]
 
 SEED_PATH = Path(__file__).parent / "data" / "seed_lexicon.txt"
+CONFUSIONS_PATH = Path(__file__).parent / "data" / "confusions.txt"
 
 
 def _parse(lines: Iterable[str]) -> list[str]:
@@ -124,3 +125,80 @@ class Lexicon:
 def load_seed_lexicon() -> Lexicon:
     """Load the bundled seed lexicon."""
     return Lexicon.from_file(SEED_PATH)
+
+
+class Confusions:
+    """Clinically significant confusion sets.
+
+    Handles the error class that similarity search structurally cannot: a
+    misrecognition that lands on *another valid clinical term*. "irreversible
+    pulpitis" heard as "reversible pulpitis" is correctly spelled, present in the
+    lexicon, and names the opposite treatment decision. Nothing about the string
+    looks wrong, so the only way to surface it is to know in advance which terms
+    get confused with which.
+    """
+
+    def __init__(self, groups: Iterable[Iterable[str]]) -> None:
+        self._counterparts: dict[str, list[str]] = {}
+        self._max_phrase = 1
+
+        for group in groups:
+            members = [normalize_text(m, numbers_to_digits=False) for m in group]
+            members = [m for m in members if m]
+            if len(members) < 2:
+                continue
+            for member in members:
+                others = [m for m in members if m != member]
+                self._counterparts.setdefault(member, []).extend(others)
+                self._max_phrase = max(self._max_phrase, len(member.split()))
+
+    def __len__(self) -> int:
+        return len(self._counterparts)
+
+    def __contains__(self, term: object) -> bool:
+        if not isinstance(term, str):
+            return False
+        return normalize_text(term, numbers_to_digits=False) in self._counterparts
+
+    @classmethod
+    def from_file(cls, path: str | Path) -> Confusions:
+        groups = []
+        for line in Path(path).read_text(encoding="utf-8").splitlines():
+            text = line.split("#", 1)[0].strip()
+            if not text:
+                continue
+            members = [part.strip() for part in text.split(",")]
+            if len(members) >= 2:
+                groups.append(members)
+        return cls(groups)
+
+    def counterparts(self, term: str) -> list[str]:
+        """Terms confusable with ``term``."""
+        key = normalize_text(term, numbers_to_digits=False)
+        return list(dict.fromkeys(self._counterparts.get(key, [])))
+
+    def find(self, text: str) -> list[str]:
+        """Counterparts of every confusable term appearing in ``text``.
+
+        Matches longest phrase first so "reversible pulpitis" resolves as the
+        two-word diagnosis rather than the bare word "reversible".
+        """
+        tokens = normalize_text(text, numbers_to_digits=False).split()
+        found: dict[str, None] = {}
+        i = 0
+        while i < len(tokens):
+            for length in range(min(self._max_phrase, len(tokens) - i), 0, -1):
+                phrase = " ".join(tokens[i : i + length])
+                if phrase in self._counterparts:
+                    for other in self.counterparts(phrase):
+                        found.setdefault(other, None)
+                    i += length
+                    break
+            else:
+                i += 1
+        return list(found)
+
+
+def load_confusions() -> Confusions:
+    """Load the bundled confusion sets."""
+    return Confusions.from_file(CONFUSIONS_PATH)

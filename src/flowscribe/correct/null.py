@@ -15,7 +15,7 @@ class NullCorrector:
     difference against this backend is attributable to the corrector alone.
     """
 
-    name = "null"
+    name = "passthrough"
 
     def __init__(self, **options: object) -> None:
         self._options = options

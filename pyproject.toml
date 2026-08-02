@@ -50,10 +50,15 @@ srt = "flowscribe.sinks.builtin:SrtSink"
 vtt = "flowscribe.sinks.builtin:VttSink"
 
 [project.entry-points."flowscribe.diarizer"]
+# "passthrough" is canonical; "null" is kept as an alias because a bare
+# `backend: null` in YAML parses as None, not the string "null".
+passthrough = "flowscribe.diarize.null:NullDiarizer"
 null = "flowscribe.diarize.null:NullDiarizer"
 
 [project.entry-points."flowscribe.corrector"]
+passthrough = "flowscribe.correct.null:NullCorrector"
 null = "flowscribe.correct.null:NullCorrector"
+ollama = "flowscribe.correct.ollama:OllamaCorrector"
 
 [build-system]
 requires = ["hatchling"]

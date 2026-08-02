@@ -31,6 +31,7 @@ __all__ = [
     "Transcript",
     "Tier",
     "Edit",
+    "Flag",
     "TranscriptionResult",
     "PartialUtterance",
     "FinalUtterance",
@@ -187,8 +188,28 @@ class Edit(BaseModel):
     reason: str | None = None
 
 
+class Flag(BaseModel):
+    """A span a human should verify. Nothing is changed.
+
+    Raised for terms that are confusable with a clinically different term where
+    *both* readings are valid vocabulary -- "reversible pulpitis" against
+    "irreversible pulpitis", "mesial" against "distal". Similarity search cannot
+    detect these, because the transcript looks entirely correct.
+
+    Deliberately not auto-corrected. Choosing between them is a clinical
+    judgement about what was actually said, and an LLM silently inverting a
+    diagnosis is a worse failure than leaving the original error in place. The
+    reviewer decides; the system only points.
+    """
+
+    utterance_id: str
+    term: str
+    alternatives: list[str]
+    reason: str = "clinically confusable term"
+
+
 class TranscriptionResult(BaseModel):
-    """What the pipeline returns: both transcripts, and the diff between them.
+    """What the pipeline returns: both transcripts, the diff, and review flags.
 
     ``verbatim`` is raw ASR output. ``corrected`` is the LLM-corrected version,
     or ``None`` when correction is disabled. Both are retained so that correction
@@ -198,6 +219,7 @@ class TranscriptionResult(BaseModel):
     verbatim: Transcript
     corrected: Transcript | None = None
     edits: list[Edit] = Field(default_factory=list)
+    flags: list[Flag] = Field(default_factory=list)
 
     @property
     def best(self) -> Transcript:

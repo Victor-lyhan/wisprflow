@@ -16,7 +16,7 @@ class NullDiarizer:
     would silently misattribute the patient's words to the dentist.
     """
 
-    name = "null"
+    name = "passthrough"
     online = False
 
     def __init__(self, **options: object) -> None:
