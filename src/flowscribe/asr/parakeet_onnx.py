@@ -206,7 +206,7 @@ class ParakeetOnnxEngine:
 
         loaded = onnx_asr.load_model(
             model,
-            path=local_path,  # type: ignore[arg-type]
+            path=local_path,
             quantization=quantization,
             providers=self.providers,
         )

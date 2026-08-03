@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
+import numpy.typing as npt
 
 from .audio.preprocess import NullPreprocessor, open_source
 from .config import Config
@@ -222,7 +223,7 @@ class Pipeline:
         16 kHz, which is fine for a single appointment. Multi-hour audio should
         be segmented by the caller.
         """
-        pieces: list[np.ndarray] = []
+        pieces: list[npt.NDArray[np.float32]] = []
         for chunk in source.chunks():
             processed = self.preprocessor.process(chunk)
             if len(processed.pcm):
@@ -330,7 +331,7 @@ class Pipeline:
 
         buffer = np.zeros(0, dtype=np.float32)
         buffer_start = 0.0
-        full: list[np.ndarray] = []
+        full: list[npt.NDArray[np.float32]] = []
         live_emitted: list[Utterance] = []
 
         for chunk in source.chunks():

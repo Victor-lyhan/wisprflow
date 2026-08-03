@@ -25,6 +25,7 @@ from typing import Any
 
 import av
 import numpy as np
+import numpy.typing as npt
 
 from ..contracts import TARGET_SAMPLE_RATE, AudioChunk, AudioMeta
 from ..errors import AudioError
@@ -38,7 +39,9 @@ __all__ = [
 ]
 
 
-def _blocks(pcm: np.ndarray, block: int, start_offset: float = 0.0) -> Iterator[AudioChunk]:
+def _blocks(
+    pcm: npt.NDArray[np.float32], block: int, start_offset: float = 0.0
+) -> Iterator[AudioChunk]:
     """Slice a buffer into fixed-size chunks with absolute timestamps."""
     total = len(pcm)
     for i in range(0, total, block):
@@ -56,7 +59,7 @@ class ArrayAudioSource:
 
     def __init__(
         self,
-        pcm: np.ndarray,
+        pcm: npt.NDArray[Any],
         sample_rate: int = TARGET_SAMPLE_RATE,
         *,
         chunk_seconds: float = 1.0,
@@ -303,7 +306,7 @@ class QueueAudioSource:
         self._elapsed = 0.0
         self.dropped = 0
 
-    def push(self, pcm: np.ndarray) -> None:
+    def push(self, pcm: npt.NDArray[Any]) -> None:
         """Submit captured audio. Safe to call from another thread."""
         resampled = self._resampler.push(pcm)
         if len(resampled) == 0:

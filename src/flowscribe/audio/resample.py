@@ -8,8 +8,11 @@ in its wheel.
 
 from __future__ import annotations
 
+from typing import Any
+
 import av
 import numpy as np
+import numpy.typing as npt
 
 from ..contracts import TARGET_SAMPLE_RATE
 from ..errors import AudioError
@@ -17,7 +20,7 @@ from ..errors import AudioError
 __all__ = ["PCMResampler", "to_float32_mono"]
 
 
-def to_float32_mono(pcm: np.ndarray) -> np.ndarray:
+def to_float32_mono(pcm: npt.NDArray[Any]) -> npt.NDArray[np.float32]:
     """Coerce a PCM array to 1-D float32 in ``[-1.0, 1.0]``.
 
     Accepts int16/int32/float arrays, shaped ``(samples,)``, ``(channels, samples)``
@@ -62,12 +65,12 @@ class PCMResampler:
             else av.AudioResampler(format="fltp", layout="mono", rate=TARGET_SAMPLE_RATE)
         )
 
-    def _emit(self, frames: list[av.AudioFrame]) -> np.ndarray:
+    def _emit(self, frames: list[av.AudioFrame]) -> npt.NDArray[np.float32]:
         if not frames:
             return np.zeros(0, dtype=np.float32)
         return np.concatenate([f.to_ndarray().reshape(-1).astype(np.float32) for f in frames])
 
-    def push(self, pcm: np.ndarray) -> np.ndarray:
+    def push(self, pcm: npt.NDArray[Any]) -> npt.NDArray[np.float32]:
         """Resample one block. May return fewer samples than given (or none)."""
         if self._passthrough:
             return to_float32_mono(pcm)
@@ -96,7 +99,7 @@ class PCMResampler:
         except (av.FFmpegError, ValueError) as exc:
             raise AudioError(f"Resampling failed: {exc}") from exc
 
-    def flush(self) -> np.ndarray:
+    def flush(self) -> npt.NDArray[np.float32]:
         """Drain the filter tail. Call once, after the last :meth:`push`."""
         if self._passthrough or self._resampler is None:
             return np.zeros(0, dtype=np.float32)

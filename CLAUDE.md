@@ -85,6 +85,22 @@ Separately, `dental/review.py` **flags** clinically confusable terms without cha
 
 `dental/teeth.py` converts between Universal, FDI, and Palmer explicitly. "Tooth 18" is the upper-right third molar in FDI and the lower-left second molar in Universal — opposite corners of the mouth. Guessing notation from context would silently record the wrong tooth.
 
+## Reproducing CI locally
+
+A stale local venv drifts from what a clean resolve picks, and that difference
+hides real bugs. `uv sync` selected numpy 1.26 while the incrementally-built
+`.venv` had 2.4 -- and numpy 1.26's stricter stubs surfaced 11 mypy errors that
+passed locally. To check anything CI reports:
+
+```bash
+git clone --branch <branch> . /tmp/citest && cd /tmp/citest
+uv sync --python 3.11 --extra dev --extra whisper --extra eval --extra llm
+uv run mypy src/ && uv run pytest -m "not slow" -q
+```
+
+Note the extras: CI does **not** install `parakeet` or `vad`, so anything
+importing `onnx_asr` at module scope would break there and not here.
+
 ## Windows
 
 Production target, never yet run there. `.github/workflows/ci.yml` tests `windows-latest` on every push, including a Windows-only job that exercises real model wheels. See `docs/windows.md` for the manual path and the specific places breakage is expected — chiefly `GrowingWavSource`, which polls a WAV while another handle writes it and depends on Windows permitting shared reads.

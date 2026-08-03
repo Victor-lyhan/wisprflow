@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from typing import Annotated, Literal
 
 import numpy as np
+import numpy.typing as npt
 from pydantic import BaseModel, ConfigDict, Field
 
 __all__ = [
@@ -69,7 +70,7 @@ class AudioChunk:
     without threading an offset through every call.
     """
 
-    pcm: np.ndarray
+    pcm: npt.NDArray[np.float32]
     sample_rate: int = TARGET_SAMPLE_RATE
     start: float = 0.0
     is_last: bool = False

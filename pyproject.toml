@@ -76,6 +76,11 @@ packages = ["src/flowscribe"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Put the repository root on sys.path so `from tests.conftest import ...`
+# resolves. Without it that import works only where sys.path happens to
+# already contain the root -- it failed in a clean CI checkout on every
+# platform while passing locally.
+pythonpath = ["."]
 markers = [
     "slow: requires downloading or running a real model",
     "needs_network: exercises provisioning, not inference",
