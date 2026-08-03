@@ -1,10 +1,40 @@
 [project]
-name = "flowscribe"
+name = "dentascribe"
 version = "0.1.0"
-description = "Modular, fully-local speech-to-text pipeline for dental clinical environments"
+description = "Fully-local speech-to-text for dental clinical audio, with domain correction"
 readme = "README.md"
 requires-python = ">=3.11"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Victor Han" }]
+keywords = [
+    "speech-recognition",
+    "asr",
+    "transcription",
+    "dental",
+    "dentistry",
+    "clinical",
+    "medical",
+    "whisper",
+    "parakeet",
+    "offline",
+    "privacy",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Healthcare Industry",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    "Typing :: Typed",
+]
 
 # Core stays deliberately light: contracts, orchestration, config, CLI.
 # Every inference engine lives behind an optional extra so a consuming project
@@ -37,38 +67,50 @@ dev = [
     "build>=1.2",
 ]
 
+[project.urls]
+Homepage = "https://github.com/Victor-lyhan/dentascribe"
+Repository = "https://github.com/Victor-lyhan/dentascribe"
+Issues = "https://github.com/Victor-lyhan/dentascribe/issues"
+Changelog = "https://github.com/Victor-lyhan/dentascribe/releases"
+
 [project.scripts]
-flowscribe = "flowscribe.cli:app"
+dentascribe = "dentascribe.cli:app"
 
 # Backends ship as entry points so they resolve through the same discovery path
 # that external projects use to register their own. Nothing is special-cased.
-[project.entry-points."flowscribe.asr"]
-faster-whisper = "flowscribe.asr.faster_whisper_engine:FasterWhisperEngine"
-parakeet-onnx = "flowscribe.asr.parakeet_onnx:ParakeetOnnxEngine"
+[project.entry-points."dentascribe.asr"]
+faster-whisper = "dentascribe.asr.faster_whisper_engine:FasterWhisperEngine"
+parakeet-onnx = "dentascribe.asr.parakeet_onnx:ParakeetOnnxEngine"
 
-[project.entry-points."flowscribe.vad"]
-silero = "flowscribe.vad.silero:SileroVAD"
+[project.entry-points."dentascribe.vad"]
+silero = "dentascribe.vad.silero:SileroVAD"
 
-[project.entry-points."flowscribe.sink"]
-json = "flowscribe.sinks.builtin:JsonSink"
-jsonl = "flowscribe.sinks.builtin:JsonlSink"
-text = "flowscribe.sinks.builtin:TextSink"
-srt = "flowscribe.sinks.builtin:SrtSink"
-vtt = "flowscribe.sinks.builtin:VttSink"
+[project.entry-points."dentascribe.sink"]
+json = "dentascribe.sinks.builtin:JsonSink"
+jsonl = "dentascribe.sinks.builtin:JsonlSink"
+text = "dentascribe.sinks.builtin:TextSink"
+srt = "dentascribe.sinks.builtin:SrtSink"
+vtt = "dentascribe.sinks.builtin:VttSink"
 
-[project.entry-points."flowscribe.corrector"]
-passthrough = "flowscribe.correct.null:NullCorrector"
-null = "flowscribe.correct.null:NullCorrector"
-ollama = "flowscribe.correct.ollama:OllamaCorrector"
+[project.entry-points."dentascribe.corrector"]
+passthrough = "dentascribe.correct.null:NullCorrector"
+null = "dentascribe.correct.null:NullCorrector"
+ollama = "dentascribe.correct.ollama:OllamaCorrector"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build.targets.sdist]
+# Ship what is needed to build and test from source, and nothing else. Without
+# an explicit list, hatchling includes the whole tree -- including any local
+# recordings under data/.
+include = ["src/", "tests/", "scripts/", "configs/", "docs/", "README.md", "LICENSE", "pyproject.toml"]
+
 [tool.hatch.build.targets.wheel]
-packages = ["src/flowscribe"]
+packages = ["src/dentascribe"]
 # The demo page is data, not code; name it so no build backend drops it.
-artifacts = ["src/flowscribe/static/*.html", "src/flowscribe/dental/data/*.txt"]
+artifacts = ["src/dentascribe/static/*.html", "src/dentascribe/dental/data/*.txt"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

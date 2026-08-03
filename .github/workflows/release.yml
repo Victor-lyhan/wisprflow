@@ -1,0 +1,79 @@
+name: Release
+
+# Publishes to PyPI when a GitHub Release is published, and to TestPyPI on
+# demand. Never on push -- a version can be yanked from PyPI but its number can
+# never be reused, so publishing has to be a deliberate act.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Where to publish
+        required: true
+        default: testpypi
+        type: choice
+        options: [testpypi, pypi]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+
+      # The tag must match the version in pyproject.toml. Catching a mismatch
+      # here is cheap; catching it after publishing is impossible.
+      - name: Check tag matches package version
+        if: github.event_name == 'release'
+        run: |
+          version=$(uv run --no-project --with tomli python -c \
+            "import tomli;print(tomli.load(open('pyproject.toml','rb'))['project']['version'])")
+          tag="${GITHUB_REF_NAME#v}"
+          echo "pyproject: $version   tag: $tag"
+          [ "$version" = "$tag" ] || { echo "::error::tag $tag != version $version"; exit 1; }
+
+      - name: Test before publishing
+        run: |
+          uv sync --extra dev --extra whisper --extra eval --extra llm
+          uv run ruff check src/ tests/ scripts/
+          uv run mypy src/
+          uv run pytest -m "not slow" -q
+
+      - name: Build
+        run: uv build
+
+      - name: Validate metadata
+        run: uv run --no-project --with twine twine check dist/*
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      # Trusted Publishing: PyPI verifies this workflow's OIDC identity, so no
+      # API token is stored anywhere. Configure it once at
+      # https://pypi.org/manage/account/publishing/ -- owner Victor-lyhan,
+      # repository dentascribe, workflow release.yml, environment release.
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to TestPyPI
+        if: github.event_name == 'workflow_dispatch' && inputs.target == 'testpypi'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+      - name: Publish to PyPI
+        if: github.event_name == 'release' || inputs.target == 'pypi'
+        uses: pypa/gh-action-pypi-publish@release/v1

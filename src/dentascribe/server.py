@@ -9,7 +9,7 @@ Binds to loopback by default. The stream carries clinical audio and, once
 transcribed, clinical text; putting that on a LAN interface should be an explicit
 choice.
 
-Requires: ``pip install 'flowscribe[ui,mic]'``
+Requires: ``pip install 'dentascribe[ui,mic]'``
 """
 
 from __future__ import annotations
@@ -46,10 +46,10 @@ def create_app(config: Config) -> Any:
     """Build the FastAPI application."""
     if not FASTAPI_AVAILABLE:
         raise ImportError(
-            "The demo UI needs fastapi and uvicorn. Install with: pip install 'flowscribe[ui]'"
+            "The demo UI needs fastapi and uvicorn. Install with: pip install 'dentascribe[ui]'"
         )
 
-    app = FastAPI(title="flowscribe demo")
+    app = FastAPI(title="dentascribe demo")
 
     @app.get("/", response_class=HTMLResponse)
     async def index() -> str:
@@ -144,7 +144,7 @@ def serve(config: Config, *, host: str = "127.0.0.1", port: int = 8000) -> None:
         import uvicorn
     except ImportError as exc:  # pragma: no cover
         raise ImportError(
-            "The demo UI needs uvicorn. Install with: pip install 'flowscribe[ui]'"
+            "The demo UI needs uvicorn. Install with: pip install 'dentascribe[ui]'"
         ) from exc
 
     uvicorn.run(create_app(config), host=host, port=port, log_level="warning")

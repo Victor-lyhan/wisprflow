@@ -7,10 +7,10 @@ from collections.abc import Iterable
 import numpy as np
 import pytest
 
-from flowscribe import Config
-from flowscribe.audio import ArrayAudioSource
-from flowscribe.config import ASRConfig, CorrectionConfig
-from flowscribe.contracts import (
+from dentascribe import Config
+from dentascribe.audio import ArrayAudioSource
+from dentascribe.config import ASRConfig, CorrectionConfig
+from dentascribe.contracts import (
     AudioChunk,
     FinalUtterance,
     PartialUtterance,
@@ -18,8 +18,8 @@ from flowscribe.contracts import (
     Utterance,
     utterance_id,
 )
-from flowscribe.pipeline import Pipeline
-from flowscribe.streaming import LocalAgreement
+from dentascribe.pipeline import Pipeline
+from dentascribe.streaming import LocalAgreement
 
 
 def utt(text: str, start: float = 0.0, end: float | None = None) -> Utterance:
@@ -128,7 +128,7 @@ class TestLocalAgreement:
         assert confirmed == [] and pending == []
 
     def test_uses_word_timings_when_available(self) -> None:
-        from flowscribe.contracts import Word
+        from dentascribe.contracts import Word
 
         u = Utterance(
             id="u",

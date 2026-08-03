@@ -190,7 +190,7 @@ capture, diarization (HF-gated), and real clinic audio.
 
 1. **`.gitignore` was eating source code.** Unanchored `data/` and `audio/`
    patterns -- written to keep patient recordings out -- also matched
-   `src/flowscribe/audio/` and `src/flowscribe/dental/data/`. The audio package
+   `src/dentascribe/audio/` and `src/dentascribe/dental/data/`. The audio package
    and the entire lexicon were never committed. All 270 local tests passed
    because an editable install imports from the working tree, so they were
    testing files no user would ever receive. Ruff and the formatter had also been

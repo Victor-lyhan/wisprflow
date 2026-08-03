@@ -49,11 +49,11 @@ uv sync --extra dev --extra whisper --extra eval --extra llm
 
 uv run pytest -q                          # full suite, including model-backed tests
 uv run mypy src/
-uv run flowscribe backends
+uv run dentascribe backends
 
 # Regenerate the smoke set locally -- this uses Windows SAPI, no install needed
 uv run python scripts/make_smoke_dataset.py --out data/smoke
-uv run flowscribe eval data/smoke/manifest.jsonl --model tiny.en --language en --allow-network
+uv run dentascribe eval data/smoke/manifest.jsonl --model tiny.en --language en --allow-network
 ```
 
 Expect **different numbers than macOS**: SAPI voices are not the macOS voices, so
@@ -76,7 +76,7 @@ acceleration on Windows only reaches faster-whisper via CUDA.
 ```powershell
 winget install Ollama.Ollama
 ollama pull qwen3:8b
-uv run flowscribe transcribe visit.wav -c configs/ollama.yaml --correct --show-edits
+uv run dentascribe transcribe visit.wav -c configs/ollama.yaml --correct --show-edits
 ```
 
 On a CPU-only box use `qwen3:4b` instead — the 8B model will run but correction
@@ -148,8 +148,8 @@ here first.
 Worth recording, because each was invisible on the development machine:
 
 1. **`.gitignore` was excluding source.** Unanchored `data/` and `audio/`
-   patterns also matched `src/flowscribe/audio/` and
-   `src/flowscribe/dental/data/`, so the audio package and the entire lexicon
+   patterns also matched `src/dentascribe/audio/` and
+   `src/dentascribe/dental/data/`, so the audio package and the entire lexicon
    were never committed. Editable installs import from the working tree, so all
    270 local tests passed against files no user would receive.
 2. **A drifted venv hid 11 mypy errors.** A clean `uv sync` resolves numpy 1.26

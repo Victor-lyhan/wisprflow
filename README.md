@@ -1,10 +1,10 @@
-# flowscribe
+# dentascribe
 
 Local speech-to-text for dental clinical audio. Speak, watch text appear, get a corrected transcript. Nothing leaves the machine and nothing costs money.
 
 ```bash
 uv pip install -e ".[whisper,mic,ui]"
-flowscribe ui --allow-network        # http://127.0.0.1:8000
+dentascribe ui --allow-network        # http://127.0.0.1:8000
 ```
 
 ---
@@ -78,8 +78,8 @@ Flags are high-severity only by default. Directional pairs like mesial/distal ar
 ### Browser UI
 
 ```bash
-flowscribe ui --allow-network            # first run downloads models
-flowscribe ui -c configs/demo.yaml       # with LLM correction
+dentascribe ui --allow-network            # first run downloads models
+dentascribe ui -c configs/demo.yaml       # with LLM correction
 ```
 
 Pick an input device (built-in mic, AirPods, USB interface), press start, speak. Live text on the left; the final transcript lands in an **editable textbox** with **Download .txt**, and the raw JSON sits beside it with **Download .json**.
@@ -87,11 +87,11 @@ Pick an input device (built-in mic, AirPods, USB interface), press start, speak.
 ### Terminal
 
 ```bash
-flowscribe listen --list-devices
-flowscribe listen --device 2 -o visit.json
-flowscribe transcribe visit.wav --format text
-flowscribe transcribe live.wav --live          # a WAV still being written
-flowscribe eval data/smoke/manifest.jsonl      # WER, domain WER, tooth accuracy
+dentascribe listen --list-devices
+dentascribe listen --device 2 -o visit.json
+dentascribe transcribe visit.wav --format text
+dentascribe transcribe live.wav --live          # a WAV still being written
+dentascribe eval data/smoke/manifest.jsonl      # WER, domain WER, tooth accuracy
 ```
 
 `listen` emits one JSON object per line:
@@ -109,7 +109,7 @@ flowscribe eval data/smoke/manifest.jsonl      # WER, domain WER, tooth accuracy
 The core is a library; the CLI and UI are thin wrappers over it.
 
 ```python
-from flowscribe import Config, transcribe_file
+from dentascribe import Config, transcribe_file
 
 result = transcribe_file("visit.wav", Config())
 result.verbatim.text      # raw ASR
@@ -121,9 +121,9 @@ result.flags              # spans a human should verify
 Live, with your own audio source:
 
 ```python
-from flowscribe import Config
-from flowscribe.pipeline import Pipeline
-from flowscribe.audio import MicrophoneSource   # or QueueAudioSource for a socket feed
+from dentascribe import Config
+from dentascribe.pipeline import Pipeline
+from dentascribe.audio import MicrophoneSource   # or QueueAudioSource for a socket feed
 
 with Pipeline(Config()) as pipeline, MicrophoneSource() as mic:
     for event in pipeline.stream(mic):
@@ -135,7 +135,7 @@ with Pipeline(Config()) as pipeline, MicrophoneSource() as mic:
 Every stage is a `Protocol` resolved by name through entry points. Registering your own needs no fork:
 
 ```toml
-[project.entry-points."flowscribe.asr"]
+[project.entry-points."dentascribe.asr"]
 my-engine = "my_package.engines:MyEngine"
 ```
 
@@ -160,9 +160,9 @@ Verified, not assumed — a wheel was built, installed into a clean environment 
 
 ```bash
 uv build --wheel                                   # 88 KB
-uv pip install "flowscribe-0.1.0-py3-none-any.whl[whisper,mic,ui]"
-flowscribe fetch-models --asr large-v3             # one-time, ~2.4 GB cached
-flowscribe transcribe visit.wav --format text      # runs offline from here
+uv pip install "dentascribe-0.1.0-py3-none-any.whl[whisper,mic,ui]"
+dentascribe fetch-models --asr large-v3             # one-time, ~2.4 GB cached
+dentascribe transcribe visit.wav --format text      # runs offline from here
 ```
 
 Two things move: the **wheel** (88 KB) and the **model cache** (~2.4 GB in `~/.cache/huggingface`). Copy the cache directly to skip re-downloading, or let `fetch-models` pull it once.
@@ -237,5 +237,19 @@ git clone --branch <branch> . /tmp/citest && cd /tmp/citest
 uv sync --python 3.11 --extra dev --extra whisper --extra eval --extra llm
 uv run mypy src/ && uv run pytest -m "not slow" -q
 ```
+
+### Publishing a release
+
+Set up [Trusted Publishing](https://pypi.org/manage/account/publishing/) once — owner `Victor-lyhan`, repository `dentascribe`, workflow `release.yml`, environment `release` — then no API token is ever stored.
+
+```bash
+# dry run first
+gh workflow run release.yml -f target=testpypi
+
+# real release: bump the version, tag it, publish the GitHub release
+gh release create v0.1.0 --generate-notes
+```
+
+The workflow refuses to publish if the git tag and `pyproject.toml` version disagree, and runs lint, mypy and the test suite before building. A PyPI version number can be yanked but never reused, so publishing is deliberate: it never fires on a plain push.
 
 See `CLAUDE.md` for architecture notes and `Development.md` for the decision log.

@@ -10,7 +10,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from flowscribe.audio import (
+from dentascribe.audio import (
     ArrayAudioSource,
     FileAudioSource,
     GrowingWavSource,
@@ -18,8 +18,8 @@ from flowscribe.audio import (
     QueueAudioSource,
     to_float32_mono,
 )
-from flowscribe.contracts import TARGET_SAMPLE_RATE
-from flowscribe.errors import AudioError
+from dentascribe.contracts import TARGET_SAMPLE_RATE
+from dentascribe.errors import AudioError
 
 
 class TestToFloat32Mono:

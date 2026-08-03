@@ -35,7 +35,7 @@ def _require_jiwer() -> Any:
         from ..errors import MissingDependency
 
         raise MissingDependency(
-            "jiwer is required for evaluation. Install with: pip install 'flowscribe[eval]'"
+            "jiwer is required for evaluation. Install with: pip install 'dentascribe[eval]'"
         ) from exc
     return jiwer
 

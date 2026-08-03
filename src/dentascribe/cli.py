@@ -1,9 +1,9 @@
 """Command-line interface.
 
-flowscribe transcribe visit.wav --format text
-flowscribe transcribe live.wav --live          # still being recorded
-flowscribe fetch-models --asr large-v3         # provisioning; the only online step
-flowscribe backends
+dentascribe transcribe visit.wav --format text
+dentascribe transcribe live.wav --live          # still being recorded
+dentascribe fetch-models --asr large-v3         # provisioning; the only online step
+dentascribe backends
 """
 
 from __future__ import annotations
@@ -18,11 +18,11 @@ from typing import Annotated, Any
 import typer
 
 from .config import Config
-from .errors import FlowscribeError
+from .errors import DentascribeError
 from .registry import ASR, CORRECTOR, SINK
 
 app = typer.Typer(
-    name="flowscribe",
+    name="dentascribe",
     help="Local speech-to-text for dental clinical audio.",
     no_args_is_help=True,
     add_completion=False,
@@ -70,7 +70,7 @@ def transcribe(
 
     try:
         config = Config.from_yaml(config_file) if config_file else Config()
-    except FlowscribeError as exc:
+    except DentascribeError as exc:
         _fail(str(exc))
 
     if model:
@@ -93,7 +93,7 @@ def transcribe(
 
     try:
         sink = SINK.create(fmt)
-    except FlowscribeError:
+    except DentascribeError:
         _fail(f"Unknown format {fmt!r}. Available: {', '.join(SINK.names())}")
 
     from .audio.preprocess import open_source
@@ -103,7 +103,7 @@ def transcribe(
         with Pipeline(config) as pipeline:
             result = pipeline.transcribe(source)
             stats = pipeline.stats
-    except FlowscribeError as exc:
+    except DentascribeError as exc:
         _fail(str(exc))
     except KeyboardInterrupt:
         typer.secho("interrupted", fg=typer.colors.YELLOW, err=True)
@@ -172,13 +172,13 @@ def listen(
         try:
             for entry in list_input_devices():
                 typer.echo(json.dumps(entry))
-        except FlowscribeError as exc:
+        except DentascribeError as exc:
             _fail(str(exc))
         return
 
     try:
         config = Config.from_yaml(config_file) if config_file else Config()
-    except FlowscribeError as exc:
+    except DentascribeError as exc:
         _fail(str(exc))
 
     if model:
@@ -202,7 +202,7 @@ def listen(
     try:
         info = default_input_device() if device is None else {"name": str(device)}
         source = MicrophoneSource(device=selected, chunk_seconds=config.chunk_seconds)
-    except FlowscribeError as exc:
+    except DentascribeError as exc:
         _fail(str(exc))
 
     typer.secho(f"listening on {info['name']}  (Ctrl-C to stop)", fg=typer.colors.CYAN, err=True)
@@ -234,7 +234,7 @@ def listen(
                     final_record = record
                 sys.stdout.write(json.dumps(record) + "\n")
                 sys.stdout.flush()
-    except FlowscribeError as exc:
+    except DentascribeError as exc:
         _fail(str(exc))
     finally:
         if deadline:
@@ -275,11 +275,11 @@ def ui(
     try:
         from .server import serve
     except ImportError:
-        _fail("The demo UI needs extra packages. Install with: pip install 'flowscribe[ui]'")
+        _fail("The demo UI needs extra packages. Install with: pip install 'dentascribe[ui]'")
 
     try:
         config = Config.from_yaml(config_file) if config_file else Config()
-    except FlowscribeError as exc:
+    except DentascribeError as exc:
         _fail(str(exc))
 
     if model:
@@ -318,13 +318,13 @@ def fetch_models(
 
         WhisperModel(asr, device="cpu", compute_type="int8", download_root=str(target))
     except ImportError:
-        _fail("faster-whisper is not installed. Install with: pip install 'flowscribe[whisper]'")
+        _fail("faster-whisper is not installed. Install with: pip install 'dentascribe[whisper]'")
     except Exception as exc:  # noqa: BLE001 - surface whatever the downloader failed with
         _fail(f"Download failed: {exc}")
 
     typer.secho(f"ready: {asr}", fg=typer.colors.GREEN)
     typer.secho(
-        "Inference can now run offline. Set FLOWSCRIBE_MODEL_DIR "
+        "Inference can now run offline. Set DENTASCRIBE_MODEL_DIR "
         f"={target} if this is not the default location.",
         fg=typer.colors.BRIGHT_BLACK,
     )
@@ -357,13 +357,13 @@ def evaluate_cmd(
     try:
         from .dental.lexicon import Lexicon, load_seed_lexicon
         from .evaluation import evaluate, load_manifest
-    except FlowscribeError as exc:
+    except DentascribeError as exc:
         _fail(str(exc))
 
     try:
         config = Config.from_yaml(config_file) if config_file else Config()
         samples = load_manifest(manifest)
-    except FlowscribeError as exc:
+    except DentascribeError as exc:
         _fail(str(exc))
 
     if model:
@@ -384,7 +384,7 @@ def evaluate_cmd(
 
     try:
         result = evaluate(samples, config, lexicon=lexicon, progress=per_sample)
-    except FlowscribeError as exc:
+    except DentascribeError as exc:
         _fail(str(exc))
 
     if per_sample:

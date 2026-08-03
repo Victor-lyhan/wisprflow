@@ -1,8 +1,8 @@
-"""flowscribe -- modular, fully-local speech-to-text for dental clinical audio.
+"""dentascribe -- modular, fully-local speech-to-text for dental clinical audio.
 
 Typical use::
 
-    from flowscribe import Config, transcribe_file
+    from dentascribe import Config, transcribe_file
 
     result = transcribe_file("visit.wav", Config())
     print(result.verbatim.text)     # raw ASR
@@ -14,6 +14,7 @@ Only ``contracts`` and ``config`` are imported eagerly; engines load on first us
 so that uninstalled optional extras cost nothing.
 """
 
+from importlib.metadata import PackageNotFoundError, version
 from typing import Any
 
 from .config import (
@@ -41,12 +42,15 @@ from .errors import (
     AudioError,
     BackendNotFound,
     ConfigError,
-    FlowscribeError,
+    DentascribeError,
     MissingDependency,
     OfflineViolation,
 )
 
-__version__ = "0.1.0"
+try:
+    __version__ = version("dentascribe")
+except PackageNotFoundError:  # running from a source tree without an install
+    __version__ = "0.0.0.dev0"
 
 __all__ = [
     "__version__",
@@ -70,7 +74,7 @@ __all__ = [
     "FinalUtterance",
     "TranscriptComplete",
     # errors
-    "FlowscribeError",
+    "DentascribeError",
     "BackendNotFound",
     "MissingDependency",
     "ConfigError",
@@ -84,7 +88,7 @@ __all__ = [
 
 
 def __getattr__(name: str) -> Any:
-    """Defer pipeline import so ``import flowscribe`` stays cheap."""
+    """Defer pipeline import so ``import dentascribe`` stays cheap."""
     if name in ("Pipeline", "transcribe_file", "stream_file"):
         from . import pipeline
 

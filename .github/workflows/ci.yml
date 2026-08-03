@@ -59,10 +59,10 @@ jobs:
           uv build --wheel --out-dir dist
           wheel=$(ls dist/*.whl | head -1)
           uv run --isolated --no-project --with "$wheel" python -c "
-          import flowscribe, flowscribe.audio, flowscribe.asr, flowscribe.correct
-          import flowscribe.dental, flowscribe.diarize, flowscribe.evaluation
-          import flowscribe.sinks, flowscribe.streaming, flowscribe.vad
-          from flowscribe.dental import load_seed_lexicon, load_confusions
+          import dentascribe, dentascribe.audio, dentascribe.asr, dentascribe.correct
+          import dentascribe.dental, dentascribe.diarize, dentascribe.evaluation
+          import dentascribe.sinks, dentascribe.streaming, dentascribe.vad
+          from dentascribe.dental import load_seed_lexicon, load_confusions
           print('wheel ok:', len(load_seed_lexicon()), 'lexicon terms,',
                 len(load_confusions()), 'confusion sets')
           "
@@ -95,4 +95,4 @@ jobs:
       - name: Transcribe a real file
         run: |
           uv run python scripts/tts.py --text "Tooth number three has a mesial occlusal distal composite restoration." --out ci-audio.wav
-          uv run flowscribe transcribe ci-audio.wav --model tiny.en --language en --allow-network --format text
+          uv run dentascribe transcribe ci-audio.wav --model tiny.en --language en --allow-network --format text

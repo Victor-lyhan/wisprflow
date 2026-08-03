@@ -1,6 +1,6 @@
 """Output formats.
 
-Each sink renders a :class:`~flowscribe.contracts.Transcript` to a string. JSON
+Each sink renders a :class:`~dentascribe.contracts.Transcript` to a string. JSON
 is the canonical form -- it is the only one that round-trips, since the subtitle
 and plain-text formats discard word timings, confidences, and provenance.
 """

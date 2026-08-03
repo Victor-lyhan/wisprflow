@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-`flowscribe` — a modular, fully-local speech-to-text pipeline for dental clinical audio. Audio in, speaker-labeled transcript out. No paid APIs, no PHI leaving the machine.
+`dentascribe` — a modular, fully-local speech-to-text pipeline for dental clinical audio. Audio in, speaker-labeled transcript out. No paid APIs, no PHI leaving the machine.
 
 Development happens on macOS (Apple Silicon); **production targets Windows**, GPU not guaranteed. That constraint drives most backend choices: MLX is Apple-only and can never be the production path, and CUDA-only tooling (NeMo, vLLM) is off the table. Portable engines only — CTranslate2, ONNX Runtime, llama.cpp.
 
@@ -20,11 +20,11 @@ pytest tests/test_metrics.py::TestDomainWordErrorRate -v
 ruff check src/ tests/ && ruff format src/ tests/
 mypy src/
 
-flowscribe backends                           # list registered backends per stage
-flowscribe transcribe visit.wav --format text
-flowscribe transcribe live.wav --live         # WAV still being written
-flowscribe fetch-models --asr large-v3        # provisioning; the only online step
-flowscribe eval data/smoke/manifest.jsonl --model tiny.en --language en --allow-network
+dentascribe backends                           # list registered backends per stage
+dentascribe transcribe visit.wav --format text
+dentascribe transcribe live.wav --live         # WAV still being written
+dentascribe fetch-models --asr large-v3        # provisioning; the only online step
+dentascribe eval data/smoke/manifest.jsonl --model tiny.en --language en --allow-network
 
 python scripts/make_smoke_dataset.py --out data/smoke   # macOS only, synthetic
 ```
@@ -56,7 +56,7 @@ Key files:
 
 ## Working on this codebase
 
-**Domain WER, not WER, is the metric.** Overall WER is dominated by ordinary words and hides clinical-vocabulary failure — the published finding, and reproduced here: on the smoke set, WER 9.57% against DWER 15.38%. When changing anything that could affect accuracy, run `flowscribe eval` and compare DWER.
+**Domain WER, not WER, is the metric.** Overall WER is dominated by ordinary words and hides clinical-vocabulary failure — the published finding, and reproduced here: on the smoke set, WER 9.57% against DWER 15.38%. When changing anything that could affect accuracy, run `dentascribe eval` and compare DWER.
 
 **Normalization is part of the metric.** `normalize.py` decides what counts as an error. Two rules there are load-bearing and easy to break:
 - Number words fold to digits, but compounding only happens with an explicit multiplier ("hundred"/"thousand"). `"three two three"` must stay three probing depths, never `323`. There are regression tests for this.
@@ -67,7 +67,7 @@ Key files:
 **Never bundle CDT or SNODENT.** Both are ADA copyright requiring a paid commercial license to redistribute, even though practices may use CDT freely in their own records. `dental/data/seed_lexicon.txt` is generic terminology only; practices supply codes at runtime via `CorrectionConfig.user_codes_path`. There is a test asserting no CDT codes are present.
 
 
-**Adding an ASR backend**: implement the `ASREngine` protocol, register an entry point under `flowscribe.asr`, then subclass `ASREngineContract` in `tests/test_contracts_and_sinks.py`. That suite is what makes interchangeability a checked property — the real faster-whisper engine and the test fake pass identically.
+**Adding an ASR backend**: implement the `ASREngine` protocol, register an entry point under `dentascribe.asr`, then subclass `ASREngineContract` in `tests/test_contracts_and_sinks.py`. That suite is what makes interchangeability a checked property — the real faster-whisper engine and the test fake pass identically.
 
 **Synthetic audio measures the harness, not accuracy.** `scripts/make_smoke_dataset.py` uses macOS `say`. It has no handpiece noise, no masks, no crosstalk, no disfluency. Never quote its numbers as accuracy figures. It also refuses legacy formant-synthesis voices (Fred, Kathy, Zarvox…) — those produced a 42% WER that measured the *synthesizer*, not the recognizer.
 

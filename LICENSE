@@ -1,0 +1,35 @@
+MIT License
+
+Copyright (c) 2026 Victor Han
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+NOTE ON BUNDLED DATA
+
+The dental lexicon in src/dentascribe/dental/data/ is derived from MeSH (public
+domain, U.S. National Library of Medicine) and RxNorm (NLM, open access), merged
+with an original hand-written seed list. It contains no CDT procedure codes and
+no SNODENT content: both are American Dental Association copyright and require a
+paid commercial licence to redistribute.
+
+Model weights are NOT bundled and are downloaded separately under their own
+licences: Parakeet-TDT (CC-BY-4.0, NVIDIA), Whisper (MIT, OpenAI), Silero VAD
+(MIT), Qwen3 (Apache-2.0, Alibaba).

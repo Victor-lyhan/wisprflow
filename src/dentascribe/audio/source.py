@@ -1,7 +1,7 @@
 """Audio sources.
 
 Four implementations covering the ways audio reaches the pipeline. All satisfy
-:class:`~flowscribe.protocols.AudioSource`, so the pipeline cannot tell a
+:class:`~dentascribe.protocols.AudioSource`, so the pipeline cannot tell a
 finished file from a recording in progress -- which is the whole reason batch
 needed no separate code path.
 

@@ -13,7 +13,7 @@ is broadband noise and can read as voiced. Whether VAD helps or hurts under dril
 noise is an empirical question for the noise sweep, which is why VAD gates
 decoding but never discards audio.
 
-Requires: ``pip install 'flowscribe[vad]'``
+Requires: ``pip install 'dentascribe[vad]'``
 """
 
 from __future__ import annotations
@@ -50,7 +50,7 @@ class SileroVAD:
             import onnx_asr
         except ImportError as exc:  # pragma: no cover - only without the extra
             raise MissingDependency(
-                "onnx-asr is not installed. Install with: pip install 'flowscribe[vad]'"
+                "onnx-asr is not installed. Install with: pip install 'dentascribe[vad]'"
             ) from exc
 
         from ..asr.parakeet_onnx import _resolve_providers

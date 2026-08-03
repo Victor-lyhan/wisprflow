@@ -28,7 +28,7 @@ This script reaches the network by design and is a build-time tool. It is never
 invoked at inference time -- that path stays offline.
 
 Usage:
-    python scripts/build_lexicon.py --out src/flowscribe/dental/data/lexicon.txt
+    python scripts/build_lexicon.py --out src/dentascribe/dental/data/lexicon.txt
     python scripts/build_lexicon.py --dry-run          # report counts, write nothing
 """
 
@@ -44,7 +44,7 @@ import urllib.request
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-SEED = REPO_ROOT / "src" / "flowscribe" / "dental" / "data" / "seed_lexicon.txt"
+SEED = REPO_ROOT / "src" / "dentascribe" / "dental" / "data" / "seed_lexicon.txt"
 
 MESH_TREES = {
     "E06": "dentistry procedures",
@@ -118,7 +118,7 @@ _REJECT = frozenset(
 
 def _http_get(url: str, timeout: float = 30.0) -> str | None:
     try:
-        request = urllib.request.Request(url, headers={"User-Agent": "flowscribe-lexicon-build"})
+        request = urllib.request.Request(url, headers={"User-Agent": "dentascribe-lexicon-build"})
         with urllib.request.urlopen(request, timeout=timeout) as response:
             return response.read().decode("utf-8", errors="replace")
     except (urllib.error.URLError, TimeoutError, OSError) as exc:

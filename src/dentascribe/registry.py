@@ -1,14 +1,14 @@
 """Backend discovery.
 
-Backends resolve by name through ``importlib.metadata`` entry points. flowscribe's
+Backends resolve by name through ``importlib.metadata`` entry points. dentascribe's
 own engines are registered the same way as anyone else's, so an external project
 adding a backend uses a supported path rather than a fork:
 
-    [project.entry-points."flowscribe.asr"]
+    [project.entry-points."dentascribe.asr"]
     my-engine = "my_package.engines:MyEngine"
 
 Resolution is lazy. Listing available backends never imports them, so having
-``flowscribe[parakeet]`` uninstalled costs nothing until something actually
+``dentascribe[parakeet]`` uninstalled costs nothing until something actually
 asks for that engine -- at which point the missing dependency is reported with
 the extra that provides it, instead of a bare ``ModuleNotFoundError``.
 """
@@ -83,7 +83,7 @@ class Registry(Generic[T]):
         except ImportError as exc:
             extra = _EXTRA_HINTS.get(name)
             hint = (
-                f" Install it with: pip install 'flowscribe[{extra}]'"
+                f" Install it with: pip install 'dentascribe[{extra}]'"
                 if extra
                 else " Its dependencies are not installed."
             )
@@ -96,7 +96,7 @@ class Registry(Generic[T]):
 
 # One registry per stage. Import these rather than constructing your own so that
 # a runtime `register()` is visible to the pipeline builder.
-ASR: Registry[Any] = Registry("flowscribe.asr")
-CORRECTOR: Registry[Any] = Registry("flowscribe.corrector")
-SINK: Registry[Any] = Registry("flowscribe.sink")
-VAD_REGISTRY: Registry[Any] = Registry("flowscribe.vad")
+ASR: Registry[Any] = Registry("dentascribe.asr")
+CORRECTOR: Registry[Any] = Registry("dentascribe.corrector")
+SINK: Registry[Any] = Registry("dentascribe.sink")
+VAD_REGISTRY: Registry[Any] = Registry("dentascribe.vad")

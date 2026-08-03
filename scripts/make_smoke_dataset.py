@@ -165,7 +165,7 @@ def main() -> int:
 
     print(f"\nWrote {manifest} ({len(records)} samples)")
     print("\nSYNTHETIC AUDIO -- validates the harness, not real-world accuracy.")
-    print(f"\n  flowscribe eval {manifest} --model small.en --language en --allow-network")
+    print(f"\n  dentascribe eval {manifest} --model small.en --language en --allow-network")
     return 0
 
 

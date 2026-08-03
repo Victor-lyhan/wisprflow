@@ -8,11 +8,11 @@ from __future__ import annotations
 
 import pytest
 
-from flowscribe.contracts import Transcript, Utterance
-from flowscribe.correct.guard import candidate_terms, check, classify
-from flowscribe.correct.prompt import build_user_prompt, parse_response, strip_reasoning
-from flowscribe.dental import Confusions, Lexicon, flag_confusions, load_confusions
-from flowscribe.dental.lexicon import load_seed_lexicon
+from dentascribe.contracts import Transcript, Utterance
+from dentascribe.correct.guard import candidate_terms, check, classify
+from dentascribe.correct.prompt import build_user_prompt, parse_response, strip_reasoning
+from dentascribe.dental import Confusions, Lexicon, flag_confusions, load_confusions
+from dentascribe.dental.lexicon import load_seed_lexicon
 
 
 @pytest.fixture

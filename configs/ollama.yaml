@@ -1,7 +1,7 @@
 # Local pipeline with LLM correction via Ollama.
 #
 #   ollama serve && ollama pull qwen3:8b
-#   flowscribe transcribe visit.wav -c configs/ollama.yaml --correct --show-edits
+#   dentascribe transcribe visit.wav -c configs/ollama.yaml --correct --show-edits
 #
 # offline_only stays true: the endpoint is loopback, so transcripts never leave
 # the machine.

@@ -9,7 +9,7 @@ merely lag. So the callback does the minimum possible: copy the buffer and hand
 it to a queue. Resampling happens on the consuming thread, where a stall costs
 latency instead of corrupting the recording.
 
-Requires: ``pip install 'flowscribe[mic]'``
+Requires: ``pip install 'dentascribe[mic]'``
 """
 
 from __future__ import annotations
@@ -37,7 +37,7 @@ def _require_sounddevice() -> Any:
         # is missing, which looks nothing like an import failure to a user.
         raise MissingDependency(
             "sounddevice is not installed or PortAudio is unavailable. "
-            "Install with: pip install 'flowscribe[mic]'"
+            "Install with: pip install 'dentascribe[mic]'"
         ) from exc
     return sd
 
@@ -76,7 +76,7 @@ def default_input_device() -> dict[str, Any]:
 class MicrophoneSource:
     """Captures from an input device and yields chunks as they arrive.
 
-    Satisfies :class:`~flowscribe.protocols.AudioSource`, so the pipeline cannot
+    Satisfies :class:`~dentascribe.protocols.AudioSource`, so the pipeline cannot
     tell live capture from a file -- the same ``stream()`` loop drives both.
 
     Use as a context manager, or call :meth:`start` and :meth:`stop` yourself::

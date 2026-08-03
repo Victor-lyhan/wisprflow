@@ -4,16 +4,16 @@ from __future__ import annotations
 
 import pytest
 
-from flowscribe.dental import Lexicon
-from flowscribe.evaluation import (
+from dentascribe.dental import Lexicon
+from dentascribe.evaluation import (
     domain_word_error_rate,
     insertion_rate,
     score,
     tooth_accuracy,
     word_error_rate,
 )
-from flowscribe.evaluation.metrics import ScoreCard
-from flowscribe.evaluation.runner import aggregate
+from dentascribe.evaluation.metrics import ScoreCard
+from dentascribe.evaluation.runner import aggregate
 
 
 @pytest.fixture

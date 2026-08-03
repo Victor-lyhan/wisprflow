@@ -1,8 +1,8 @@
 # Live demo: microphone in, corrected transcript out.
 #
 #   ollama serve && ollama pull qwen3:8b     # once, for correction
-#   flowscribe ui -c configs/demo.yaml --allow-network
-#   flowscribe listen -c configs/demo.yaml --allow-network
+#   dentascribe ui -c configs/demo.yaml --allow-network
+#   dentascribe listen -c configs/demo.yaml --allow-network
 #
 # --allow-network is only needed the first time, while models download. After
 # that the pipeline runs offline.

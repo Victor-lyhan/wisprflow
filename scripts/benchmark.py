@@ -29,9 +29,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from flowscribe.config import ASRConfig, Config, CorrectionConfig  # noqa: E402
-from flowscribe.dental.lexicon import BUILT_PATH, SEED_PATH, load_seed_lexicon  # noqa: E402
-from flowscribe.evaluation import evaluate, load_manifest  # noqa: E402
+from dentascribe.config import ASRConfig, Config, CorrectionConfig  # noqa: E402
+from dentascribe.dental.lexicon import BUILT_PATH, SEED_PATH, load_seed_lexicon  # noqa: E402
+from dentascribe.evaluation import evaluate, load_manifest  # noqa: E402
 
 ENGINES: list[tuple[str, str, str]] = [
     ("whisper-tiny", "faster-whisper", "tiny.en"),

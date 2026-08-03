@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from flowscribe.normalize import normalize_text, tokenize, words_to_digits
+from dentascribe.normalize import normalize_text, tokenize, words_to_digits
 
 
 class TestWordsToDigits:

@@ -5,7 +5,7 @@ new engine therefore never requires touching this module -- unknown keys go
 through to the backend constructor.
 
 Settings resolve from, in increasing precedence: defaults, a YAML file,
-``FLOWSCRIBE_*`` environment variables, and explicit keyword arguments.
+``DENTASCRIBE_*`` environment variables, and explicit keyword arguments.
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ __all__ = ["Config", "ASRConfig", "VADConfig", "CorrectionConfig"]
 
 
 def _default_model_dir() -> Path:
-    return Path(os.environ.get("FLOWSCRIBE_MODEL_DIR", Path.home() / ".flowscribe" / "models"))
+    return Path(os.environ.get("DENTASCRIBE_MODEL_DIR", Path.home() / ".dentascribe" / "models"))
 
 
 class ASRConfig(BaseModel):
@@ -94,7 +94,7 @@ class Config(BaseSettings):
     """Top-level pipeline configuration."""
 
     model_config = SettingsConfigDict(
-        env_prefix="FLOWSCRIBE_",
+        env_prefix="DENTASCRIBE_",
         env_nested_delimiter="__",
         extra="forbid",
     )
@@ -121,7 +121,7 @@ class Config(BaseSettings):
     """Forbid all network access during inference.
 
     On by default. Models are fetched in an explicit provisioning step
-    (``flowscribe fetch-models``); anything that would download at inference time
+    (``dentascribe fetch-models``); anything that would download at inference time
     is a bug, and this makes it fail loudly instead of silently reaching out
     while patient audio is in memory."""
 

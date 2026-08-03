@@ -5,7 +5,7 @@ quantization and installs cleanly on Windows without CUDA -- which is the
 production constraint. Whisper is the default engine for the final tier for its
 language coverage (99 languages against Parakeet's 25).
 
-Requires: ``pip install 'flowscribe[whisper]'``
+Requires: ``pip install 'dentascribe[whisper]'``
 """
 
 from __future__ import annotations
@@ -78,7 +78,7 @@ class FasterWhisperEngine:
             from faster_whisper import WhisperModel
         except ImportError as exc:  # pragma: no cover - exercised only without the extra
             raise MissingDependency(
-                "faster-whisper is not installed. Install with: pip install 'flowscribe[whisper]'"
+                "faster-whisper is not installed. Install with: pip install 'dentascribe[whisper]'"
             ) from exc
 
         self.device = _resolve_device(device)

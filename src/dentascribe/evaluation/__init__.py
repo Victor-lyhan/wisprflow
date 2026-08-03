@@ -1,6 +1,6 @@
 """Evaluation harness.
 
-Requires ``pip install 'flowscribe[eval]'``.
+Requires ``pip install 'dentascribe[eval]'``.
 """
 
 from ..normalize import normalize_text, tokenize, words_to_digits

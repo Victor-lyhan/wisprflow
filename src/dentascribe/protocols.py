@@ -2,7 +2,7 @@
 
 Each pipeline stage is a ``Protocol`` rather than a base class, so a consuming
 project can satisfy it with any object -- including one that already exists in
-that project and knows nothing about flowscribe.
+that project and knows nothing about dentascribe.
 
 Batch is modeled as a degenerate case of streaming: an ``AudioSource`` for a
 finished file simply yields its chunks and sets ``is_last``. There is no separate

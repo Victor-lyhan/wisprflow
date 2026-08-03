@@ -10,7 +10,7 @@ per-utterance keeps each edit attributable to a specific span, bounds the damage
 of a bad generation to one utterance, and lets the guard reject that utterance
 alone rather than discarding the run.
 
-Requires: ``pip install 'flowscribe[llm]'`` and a running ``ollama serve``.
+Requires: ``pip install 'dentascribe[llm]'`` and a running ``ollama serve``.
 """
 
 from __future__ import annotations
@@ -51,7 +51,7 @@ class OllamaCorrector:
         except ImportError as exc:  # pragma: no cover
             raise MissingDependency(
                 "httpx is required for the Ollama corrector. Install with: "
-                "pip install 'flowscribe[llm]'"
+                "pip install 'dentascribe[llm]'"
             ) from exc
 
         self.model = model

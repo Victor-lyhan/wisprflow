@@ -13,7 +13,7 @@ Licence: CC-BY-4.0. Covers 25 languages with automatic language identification,
 against Whisper's 99 -- so Whisper remains the default for the final tier where
 coverage matters more than speed, and this is the live-tier and CPU-box choice.
 
-Requires: ``pip install 'flowscribe[parakeet]'``
+Requires: ``pip install 'dentascribe[parakeet]'``
 """
 
 from __future__ import annotations
@@ -186,7 +186,7 @@ class ParakeetOnnxEngine:
             import onnx_asr
         except ImportError as exc:  # pragma: no cover - only without the extra
             raise MissingDependency(
-                "onnx-asr is not installed. Install with: pip install 'flowscribe[parakeet]'"
+                "onnx-asr is not installed. Install with: pip install 'dentascribe[parakeet]'"
             ) from exc
 
         self.model_name = model

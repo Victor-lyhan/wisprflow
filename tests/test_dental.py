@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from flowscribe.dental import Lexicon, extract_tooth_numbers, load_seed_lexicon
-from flowscribe.normalize import tokenize
+from dentascribe.dental import Lexicon, extract_tooth_numbers, load_seed_lexicon
+from dentascribe.normalize import tokenize
 
 
 class TestSeedLexicon:

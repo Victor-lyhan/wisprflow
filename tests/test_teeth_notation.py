@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from flowscribe.dental.teeth import (
+from dentascribe.dental.teeth import (
     fdi_to_universal,
     palmer_to_universal,
     tooth_name,

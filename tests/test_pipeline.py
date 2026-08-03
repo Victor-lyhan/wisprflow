@@ -8,12 +8,12 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from flowscribe import Config
-from flowscribe.audio import ArrayAudioSource
-from flowscribe.config import ASRConfig, CorrectionConfig
-from flowscribe.errors import BackendNotFound, ConfigError, OfflineViolation
-from flowscribe.pipeline import Pipeline
-from flowscribe.registry import ASR, SINK, Registry
+from dentascribe import Config
+from dentascribe.audio import ArrayAudioSource
+from dentascribe.config import ASRConfig, CorrectionConfig
+from dentascribe.errors import BackendNotFound, ConfigError, OfflineViolation
+from dentascribe.pipeline import Pipeline
+from dentascribe.registry import ASR, SINK, Registry
 
 
 class TestRegistry:
@@ -23,10 +23,10 @@ class TestRegistry:
 
     def test_listing_does_not_import(self) -> None:
         """Listing must stay free, or an uninstalled extra breaks `backends`."""
-        Registry("flowscribe.asr").names()
+        Registry("dentascribe.asr").names()
 
     def test_runtime_registration_wins(self) -> None:
-        reg: Registry = Registry("flowscribe.test")
+        reg: Registry = Registry("dentascribe.test")
 
         class Custom:
             pass
@@ -37,10 +37,10 @@ class TestRegistry:
 
     def test_unknown_backend_lists_alternatives(self) -> None:
         with pytest.raises(BackendNotFound, match="Available"):
-            Registry("flowscribe.asr").get("nonexistent")
+            Registry("dentascribe.asr").get("nonexistent")
 
     def test_create_instantiates(self) -> None:
-        reg: Registry = Registry("flowscribe.test")
+        reg: Registry = Registry("dentascribe.test")
 
         class Custom:
             def __init__(self, value: int = 0) -> None:

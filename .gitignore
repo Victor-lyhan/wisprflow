@@ -14,10 +14,10 @@ htmlcov/
 #
 # These patterns are ANCHORED to the repository root with a leading slash, and
 # must stay that way. Unanchored `data/` and `audio/` match at any depth, so they
-# also swallowed `src/flowscribe/audio/` and `src/flowscribe/dental/data/` --
+# also swallowed `src/dentascribe/audio/` and `src/dentascribe/dental/data/` --
 # silently excluding the entire audio package and the whole lexicon from both git
 # and the built wheel. Every platform's CI failed with
-# `ModuleNotFoundError: No module named 'flowscribe.audio'` before this was found.
+# `ModuleNotFoundError: No module named 'dentascribe.audio'` before this was found.
 /data/
 /audio/
 /transcripts/

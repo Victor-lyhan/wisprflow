@@ -14,7 +14,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from flowscribe.contracts import AudioChunk, Edit, Transcript, Utterance, utterance_id
+from dentascribe.contracts import AudioChunk, Edit, Transcript, Utterance, utterance_id
 
 
 @pytest.fixture

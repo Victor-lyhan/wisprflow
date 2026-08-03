@@ -7,7 +7,7 @@ import json
 import numpy as np
 import pytest
 
-from flowscribe.contracts import (
+from dentascribe.contracts import (
     AudioChunk,
     Transcript,
     TranscriptionResult,
@@ -15,7 +15,7 @@ from flowscribe.contracts import (
     Word,
     utterance_id,
 )
-from flowscribe.sinks import JsonlSink, JsonSink, SrtSink, TextSink, VttSink
+from dentascribe.sinks import JsonlSink, JsonSink, SrtSink, TextSink, VttSink
 
 
 class TestContracts:
@@ -214,6 +214,6 @@ class TestFasterWhisperContract(ASREngineContract):
     @pytest.fixture
     def engine(self):
         pytest.importorskip("faster_whisper")
-        from flowscribe.asr.faster_whisper_engine import FasterWhisperEngine
+        from dentascribe.asr.faster_whisper_engine import FasterWhisperEngine
 
         return FasterWhisperEngine(model="tiny.en", device="cpu", compute_type="int8")
