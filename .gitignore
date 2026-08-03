@@ -10,13 +10,25 @@ build/
 .coverage
 htmlcov/
 
-# Never commit clinical audio, transcripts, or derived artifacts.
-data/
-audio/
+# Clinical recordings and derived artifacts.
+#
+# These patterns are ANCHORED to the repository root with a leading slash, and
+# must stay that way. Unanchored `data/` and `audio/` match at any depth, so they
+# also swallowed `src/flowscribe/audio/` and `src/flowscribe/dental/data/` --
+# silently excluding the entire audio package and the whole lexicon from both git
+# and the built wheel. Every platform's CI failed with
+# `ModuleNotFoundError: No module named 'flowscribe.audio'` before this was found.
+/data/
+/audio/
+/transcripts/
+/models/
+/recordings/
+
+# Audio anywhere: no patient recording should ever be committed.
 *.wav
 *.mp3
 *.m4a
 *.flac
-transcripts/
-models/
+*.aiff
+
 .env

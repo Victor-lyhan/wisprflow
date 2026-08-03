@@ -47,6 +47,14 @@ jobs:
         # one platform only, since the download is what is slow, not the code.
         run: uv run pytest -m "not slow" -q
 
+      # Packaging is verified separately because every test above imports from
+      # the working tree. A wheel missing a subpackage passes all of them and
+      # fails for every user -- which is exactly what happened.
+      - name: Build wheel and import from a clean install
+        run: |
+          uv build --wheel --out-dir dist
+          uv run --isolated --no-project --with dist/*.whl python -c "import flowscribe, flowscribe.audio, flowscribe.asr, flowscribe.dental, flowscribe.streaming, flowscribe.vad, flowscribe.sinks, flowscribe.evaluation, flowscribe.correct, flowscribe.diarize; from flowscribe.dental import load_seed_lexicon; print('wheel ok:', len(load_seed_lexicon()), 'lexicon terms')"
+
   # Exercises the real ASR backend end to end. Windows-only on purpose: the
   # engines are portable Python, so what actually needs proving here is that
   # CTranslate2 and PyAV wheels resolve and run on the production platform.
