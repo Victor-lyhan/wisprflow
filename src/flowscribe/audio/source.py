@@ -122,9 +122,7 @@ class FileAudioSource:
                 if not container.streams.audio:
                     raise AudioError(f"No audio stream in {self.path}")
                 stream = container.streams.audio[0]
-                resampler = av.AudioResampler(
-                    format="fltp", layout="mono", rate=TARGET_SAMPLE_RATE
-                )
+                resampler = av.AudioResampler(format="fltp", layout="mono", rate=TARGET_SAMPLE_RATE)
 
                 for frame in container.decode(stream):
                     for out in resampler.resample(frame):
@@ -267,9 +265,7 @@ class GrowingWavSource:
                         piece, buffer = buffer[:block], buffer[block:]
                         yield AudioChunk(pcm=piece, start=emitted / TARGET_SAMPLE_RATE)
                         emitted += len(piece)
-                    yield AudioChunk(
-                        pcm=buffer, start=emitted / TARGET_SAMPLE_RATE, is_last=True
-                    )
+                    yield AudioChunk(pcm=buffer, start=emitted / TARGET_SAMPLE_RATE, is_last=True)
                     return
 
                 if not usable:

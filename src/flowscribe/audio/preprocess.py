@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ..protocols import AudioSource
-
 from ..contracts import AudioChunk
+from ..protocols import AudioSource
 from .source import FileAudioSource, GrowingWavSource
 
 __all__ = ["NullPreprocessor", "open_source"]
