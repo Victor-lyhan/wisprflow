@@ -51,9 +51,21 @@ jobs:
       # the working tree. A wheel missing a subpackage passes all of them and
       # fails for every user -- which is exactly what happened.
       - name: Build wheel and import from a clean install
+        # bash explicitly: PowerShell is the default shell on Windows runners and
+        # does not expand `dist/*.whl` into an argument, so uv received the glob
+        # verbatim and failed with "Failed to resolve --with requirement".
+        shell: bash
         run: |
           uv build --wheel --out-dir dist
-          uv run --isolated --no-project --with dist/*.whl python -c "import flowscribe, flowscribe.audio, flowscribe.asr, flowscribe.dental, flowscribe.streaming, flowscribe.vad, flowscribe.sinks, flowscribe.evaluation, flowscribe.correct, flowscribe.diarize; from flowscribe.dental import load_seed_lexicon; print('wheel ok:', len(load_seed_lexicon()), 'lexicon terms')"
+          wheel=$(ls dist/*.whl | head -1)
+          uv run --isolated --no-project --with "$wheel" python -c "
+          import flowscribe, flowscribe.audio, flowscribe.asr, flowscribe.correct
+          import flowscribe.dental, flowscribe.diarize, flowscribe.evaluation
+          import flowscribe.sinks, flowscribe.streaming, flowscribe.vad
+          from flowscribe.dental import load_seed_lexicon, load_confusions
+          print('wheel ok:', len(load_seed_lexicon()), 'lexicon terms,',
+                len(load_confusions()), 'confusion sets')
+          "
 
   # Exercises the real ASR backend end to end. Windows-only on purpose: the
   # engines are portable Python, so what actually needs proving here is that

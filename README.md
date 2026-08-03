@@ -82,6 +82,10 @@ CDT procedure codes and SNODENT are American Dental Association copyright and re
 
 ## Status
 
+CI green on Windows, macOS and Linux across Python 3.11 and 3.12, including a
+Windows job that installs the real faster-whisper and PyAV wheels and transcribes
+a file end to end.
+
 Working end to end: batch and streaming transcription, LLM correction, review flagging, tooth notation conversion, evaluation harness. 270 tests, mypy strict clean.
 
 Streaming measured on a 15.9 s recording written to disk in real time: first partial at **1.30 s**, first confirmed text at **4.24 s**.
