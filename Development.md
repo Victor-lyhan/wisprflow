@@ -122,4 +122,55 @@ and needs a login before it loads at all.
 Still blocking on real data: every number above comes from synthetic TTS. No
 handpiece noise, no masks, no crosstalk, no disfluency.
 
+## 8/2/2026 (later still) — Phase 4, all backends built
+
+### Systematic comparison, 10 synthetic samples, 68 domain terms
+
+| engine | WER | DWER | terms | tooth | RTF | ins |
+|---|---|---|---|---|---|---|
+| whisper-tiny | 8.51% | 11.76% | 60/68 | 100% | 0.047 | - |
+| whisper-tiny+llm | 3.72% | 0.00% | 68/68 | 100% | 0.240 | 4.0% |
+| whisper-small | 8.51% | 14.71% | 58/68 | 100% | 0.319 | - |
+| whisper-small+llm | 5.32% | 4.41% | 65/68 | 100% | 0.319 | 4.1% |
+| parakeet-v3 | 7.98% | 8.82% | 62/68 | 100% | 0.076 | - |
+| **parakeet-v3+llm** | 5.85% | **2.94%** | 66/68 | 100% | **0.161** | 2.6% |
+
+Four things fall out of this:
+
+1. **Correction beats model size, decisively.** tiny+llm (DWER 0.00%) beats small
+   alone (14.71%). Spending compute on the correction stage buys far more
+   clinical accuracy than spending it on a bigger recognizer.
+2. **whisper-small scored *worse* than whisper-tiny on domain terms** (14.71% vs
+   11.76%) while tying on overall WER. On 68 terms that is 2 terms of difference
+   and could easily be noise -- but it is a reminder that general-purpose model
+   size does not predict clinical vocabulary accuracy.
+3. **Parakeet is the best uncorrected engine and the best production choice.**
+   8.82% DWER against whisper-small's 14.71%, at a quarter the RTF. With
+   correction: 2.94% DWER at RTF 0.161 -- the pick for a Windows CPU box.
+4. **Insertion rate 2.6-4.1%.** The corrector does add some content. Parakeet+llm
+   is lowest. Non-zero means the guard is doing real work and warrants watching.
+
+Treat tiny+llm's 0.00% as the small-sample artifact it probably is, not a claim.
+
+### Built
+
+Parakeet ONNX (production engine), Silero VAD (gates the streaming decode),
+lexicon build from MeSH + RxNorm (286 -> 787 terms), benchmark script, Windows
+CI matrix, cross-platform TTS.
+
+### Bugs found by running rather than reading
+
+- **CoreML auto-selection was 45x slower than CPU.** It supports 1012 of 2115
+  nodes, so the graph fragments into ~291 partitions and transfer overhead
+  dominates. RTF 3.69 vs 0.082. Removed from auto-detect.
+- **Whitespace tokens are word boundaries.** Dropping them produced "number3" and
+  "tooth number19" -- which then defeated tooth extraction entirely.
+- **`path` means opposite things in onnx-asr and faster-whisper.** One is a
+  pre-staged weights directory, the other a download cache.
+
+### Still outstanding
+
+Diarization remains unverified anywhere -- pyannote is HF-gated. Windows is
+untested until CI runs. And every number above is synthetic speech.
+
 ## 7/16/2026
