@@ -64,14 +64,17 @@ jobs:
         run: |
           uv build --wheel --out-dir dist
           wheel=$(ls dist/*.whl | head -1)
-          uv run --isolated --no-project --with "$wheel" python -c "
-          import dentascribe, dentascribe.audio, dentascribe.asr, dentascribe.correct
-          import dentascribe.dental, dentascribe.diarize, dentascribe.evaluation
-          import dentascribe.sinks, dentascribe.streaming, dentascribe.vad
-          from dentascribe.dental import load_seed_lexicon, load_confusions
-          print('wheel ok:', len(load_seed_lexicon()), 'lexicon terms,',
-                len(load_confusions()), 'confusion sets')
-          "
+          uv run --isolated --no-project --with "$wheel" python - <<'CHECK'
+          import importlib, pkgutil
+          import dentascribe
+          found = sorted(m.name for m in pkgutil.iter_modules(dentascribe.__path__) if m.ispkg)
+          for name in found:
+              importlib.import_module(f"dentascribe.{name}")
+          from dentascribe.dental import load_confusions, load_seed_lexicon
+          print("wheel ok:", ", ".join(found))
+          print("data:", len(load_seed_lexicon()), "lexicon terms,", len(load_confusions()), "confusion sets")
+          assert found, "wheel contains no subpackages"
+          CHECK
 
   # Exercises the real ASR backend end to end. Windows-only on purpose: the
   # engines are portable Python, so what actually needs proving here is that
