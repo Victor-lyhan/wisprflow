@@ -1,8 +1,15 @@
 # Testing on Windows
 
-Windows is the production target, but development happens on macOS. Nothing here
-has been run on Windows yet — this document is the plan for closing that gap, and
-it flags where breakage is most likely rather than claiming it will work.
+Windows is the production target, development happens on macOS. CI now runs the
+suite on `windows-latest` on every push, so this is a record of what has actually
+been verified there rather than a list of hopes.
+
+**Verified on Windows** (GitHub Actions, `windows-latest`): the full test suite,
+mypy strict, lint, and — in the `models` job — real faster-whisper and PyAV
+wheels installing and transcribing a file end to end.
+
+**Not verified anywhere**: GPU paths, microphone capture, real clinic audio
+hardware, and diarization (HF-gated). A CI runner has no GPU and no sound card.
 
 There are two ways to get Windows results. Use both: CI catches regressions on
 every push, a real machine catches things CI cannot (GPU, microphone, a clinic's
@@ -83,12 +90,11 @@ will dominate wall-clock time.
 Listed in rough order of risk. Each is a specific thing to check, not a general
 worry.
 
-**1. `GrowingWavSource` file-sharing semantics.** The highest-risk item by some
-margin. It polls a WAV while another handle is still writing it. Windows file
-locking is stricter than POSIX: CPython's `open()` permits shared reads by
-default, so this *should* work, but the entire live-transcription path depends on
-it and it has never been exercised there. `tests/test_audio.py::TestGrowingWavSource`
-covers it — watch that class specifically.
+**1. ~~`GrowingWavSource` file-sharing semantics.~~ RESOLVED.** This was the
+highest-risk item: it polls a WAV while another handle writes it, and Windows
+file locking is stricter than POSIX. `tests/test_audio.py::TestGrowingWavSource`
+passes on `windows-latest`, so CPython's default shared-read behaviour does hold
+and the live-transcription path works there.
 
 **2. Hugging Face cache symlinks.** The HF cache uses symlinks, which on Windows
 need Developer Mode or an elevated shell. Without it, files are copied instead —
@@ -107,16 +113,20 @@ Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" `
   -Name LongPathsEnabled -Value 1
 ```
 
-**4. PyAV wheels.** Chosen specifically so Windows needs no separate ffmpeg
-install and no PATH configuration — the codecs ship inside the wheel. If the
-`models` CI job fails at import, that assumption is wrong and is worth knowing
-early.
+**4. ~~PyAV wheels.~~ RESOLVED.** Chosen so Windows needs no separate ffmpeg
+install and no PATH configuration. The `models` job decodes and transcribes a
+real file on Windows, so the assumption holds.
 
 **5. `pyannote` / torch.** The largest install by far and the most likely to be
 awkward. Also still unverified anywhere, since the models are HF-gated (see
 below).
 
-**6. Line endings.** `.gitattributes` pins `.txt` and `.jsonl` to LF, so the seed
+**6. Shell portability in CI.** PowerShell is the default shell on Windows
+runners and does not expand globs into arguments the way bash does —
+`--with dist/*.whl` reached uv verbatim and failed. Any workflow step relying on
+shell expansion needs an explicit `shell: bash`.
+
+**7. Line endings.** `.gitattributes` pins `.txt` and `.jsonl` to LF, so the seed
 lexicon, confusion sets, and dataset manifests parse identically on both
 platforms. A lexicon test failing on Windows and nowhere else would still point
 here first.
@@ -131,3 +141,21 @@ here first.
   is written but unrun, on every platform.
 - **Real accuracy.** Every number in this repo comes from synthetic speech. No
   handpiece whine, no suction, no masks, no crosstalk, no disfluency.
+- **GPU acceleration.** CI runners have no GPU, so the CUDA and DirectML provider
+  paths in `parakeet_onnx.py` are unexercised. They are selected by
+  `_resolve_providers` and will only be proven on real hardware.
+
+## What CI caught that local development could not
+
+Worth recording, because each was invisible on the development machine:
+
+1. **`.gitignore` was excluding source.** Unanchored `data/` and `audio/`
+   patterns also matched `src/flowscribe/audio/` and
+   `src/flowscribe/dental/data/`, so the audio package and the entire lexicon
+   were never committed. Editable installs import from the working tree, so all
+   270 local tests passed against files no user would receive.
+2. **A drifted venv hid 11 mypy errors.** A clean `uv sync` resolves numpy 1.26
+   whose stubs require `ndarray` type arguments; the local venv had drifted to
+   2.4. Fixing the annotations then exposed a genuinely wrong one.
+3. **`from tests.conftest import ...`** worked only because `sys.path` happened
+   to contain the repository root.

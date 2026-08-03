@@ -173,4 +173,42 @@ CI matrix, cross-platform TTS.
 Diarization remains unverified anywhere -- pyannote is HF-gated. Windows is
 untested until CI runs. And every number above is synthetic speech.
 
+## 8/2/2026 (evening) — Windows verified
+
+CI green on all seven jobs: windows/macos/ubuntu x py3.11/3.12, plus a
+Windows-only job running real faster-whisper and PyAV wheels end to end.
+
+**Verified on Windows**: the full suite, mypy strict, lint, and real model
+inference. Specifically resolved: `GrowingWavSource` handles Windows file-sharing
+(the highest-risk item -- it polls a WAV while another handle writes it), and
+PyAV wheels decode without a separate ffmpeg install.
+
+**Still unverified anywhere**: GPU paths (CI runners have none), microphone
+capture, diarization (HF-gated), and real clinic audio.
+
+### Three bugs CI caught that were structurally invisible locally
+
+1. **`.gitignore` was eating source code.** Unanchored `data/` and `audio/`
+   patterns -- written to keep patient recordings out -- also matched
+   `src/flowscribe/audio/` and `src/flowscribe/dental/data/`. The audio package
+   and the entire lexicon were never committed. All 270 local tests passed
+   because an editable install imports from the working tree, so they were
+   testing files no user would ever receive. Ruff and the formatter had also been
+   silently skipping the package for the same reason.
+2. **A drifted venv hid 11 mypy errors.** A clean `uv sync` resolves numpy 1.26,
+   whose stubs require type arguments on `ndarray`; the local venv had drifted to
+   2.4. Annotating properly then exposed a genuinely wrong annotation:
+   `to_float32_mono` and `PCMResampler.push` were typed as taking float32 but
+   accept int16/int32 and convert.
+3. **`from tests.conftest import ...`** resolved only because sys.path happened
+   to contain the repo root.
+
+Plus one in the workflow itself: PowerShell is the default shell on Windows
+runners and does not expand `dist/*.whl`, so uv received the glob verbatim.
+
+The common thread is that a local development environment cannot test what it
+imports around. Editable installs, a warm venv, and an accidentally-correct
+sys.path each hid a real defect. Nothing short of a clean checkout on another
+machine would have found them.
+
 ## 7/16/2026
