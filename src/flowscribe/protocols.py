@@ -65,6 +65,15 @@ class VAD(Protocol):
 
     def segments(self, chunk: AudioChunk) -> list[VadSegment]: ...
 
+    def has_speech(self, chunk: AudioChunk) -> bool:
+        """Whether the chunk contains any speech at all.
+
+        Separate from :meth:`segments` because it is the question the streaming
+        loop actually asks -- it only needs to decide whether decoding this block
+        is worth doing, not where within it the speech lies.
+        """
+        ...
+
     def reset(self) -> None:
         """Drop internal state between sessions. VADs are usually stateful."""
         ...

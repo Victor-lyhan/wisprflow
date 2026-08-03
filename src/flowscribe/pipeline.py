@@ -38,8 +38,8 @@ from .contracts import (
 from .dental.lexicon import load_confusions
 from .dental.review import flag_confusions
 from .errors import OfflineViolation
-from .protocols import ASREngine, AudioSource, Corrector, Diarizer, Preprocessor
-from .registry import ASR, CORRECTOR, DIARIZER
+from .protocols import VAD, ASREngine, AudioSource, Corrector, Diarizer, Preprocessor
+from .registry import ASR, CORRECTOR, DIARIZER, VAD_REGISTRY
 from .streaming.policy import LocalAgreement
 
 __all__ = ["Pipeline", "RunStats", "transcribe_file", "stream_file"]
@@ -55,6 +55,7 @@ class RunStats:
     diarize_seconds: float = 0.0
     correct_seconds: float = 0.0
     edits: int = 0
+    vad_skipped_blocks: int = 0
 
     @property
     def total_seconds(self) -> float:
@@ -96,6 +97,7 @@ class Pipeline:
         *,
         asr: ASREngine | None = None,
         live_asr: ASREngine | None = None,
+        vad: VAD | None = None,
         diarizer: Diarizer | None = None,
         corrector: Corrector | None = None,
         preprocessor: Preprocessor | None = None,
@@ -108,6 +110,7 @@ class Pipeline:
 
         self._asr = asr
         self._live_asr = live_asr
+        self._vad = vad
         self._diarizer = diarizer
         self._corrector = corrector
         self.preprocessor: Preprocessor = preprocessor or NullPreprocessor()
@@ -157,6 +160,22 @@ class Pipeline:
                     **cfg.options,
                 )
         return self._live_asr
+
+    @property
+    def vad(self) -> VAD | None:
+        if not self.config.vad.enabled:
+            return None
+        if self._vad is None:
+            cfg = self.config.vad
+            self._vad = VAD_REGISTRY.create(
+                cfg.backend,
+                threshold=cfg.threshold,
+                min_speech_ms=cfg.min_speech_ms,
+                min_silence_ms=cfg.min_silence_ms,
+                model_dir=str(self.config.model_dir),
+                **cfg.options,
+            )
+        return self._vad
 
     @property
     def diarizer(self) -> Diarizer | None:
@@ -305,7 +324,9 @@ class Pipeline:
         """
         policy = LocalAgreement(self.config.confirm_after)
         engine = self.live_asr
+        detector = self.vad
         language = self.config.live.language
+        skipped = 0
 
         buffer = np.zeros(0, dtype=np.float32)
         buffer_start = 0.0
@@ -324,6 +345,21 @@ class Pipeline:
                 continue
 
             window = AudioChunk(pcm=buffer, sample_rate=TARGET_SAMPLE_RATE, start=buffer_start)
+
+            # Skip the decode when the buffer holds no speech. Only safe while
+            # nothing is pending: text awaiting confirmation needs a further
+            # decode to be confirmed, and silence is exactly what follows the
+            # last word of an utterance -- gating unconditionally would strand
+            # that text until the stream ended.
+            if (
+                detector is not None
+                and not chunk.is_last
+                and not policy.pending
+                and not detector.has_speech(window)
+            ):
+                skipped += 1
+                continue
+
             hypothesis = engine.transcribe(window, language=language, hotwords=hotwords)
             confirmed, pending = policy.update(hypothesis)
 
@@ -350,6 +386,8 @@ class Pipeline:
             live_emitted.append(utterance)
             yield FinalUtterance(utterance=utterance)
 
+        self.stats.vad_skipped_blocks = skipped
+
         # -- final tier ----------------------------------------------------- #
         audio = np.concatenate(full) if full else np.zeros(0, dtype=np.float32)
         meta = source.meta()
@@ -366,7 +404,7 @@ class Pipeline:
         yield TranscriptComplete(result=result)
 
     def close(self) -> None:
-        for stage in (self._asr, self._live_asr, self._diarizer, self._corrector):
+        for stage in (self._asr, self._live_asr, self._vad, self._diarizer, self._corrector):
             closer = getattr(stage, "close", None)
             if callable(closer):
                 closer()

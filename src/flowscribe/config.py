@@ -47,6 +47,13 @@ class ASRConfig(BaseModel):
 
 
 class VADConfig(BaseModel):
+    enabled: bool = False
+    """Skip decoding blocks that contain no speech.
+
+    Off by default because it needs the `vad` extra. Worth enabling for real
+    appointments: much of an operatory recording is the operator working without
+    speaking, and decoding that audio is pure waste."""
+
     backend: str = "silero"
     threshold: float = 0.5
     min_speech_ms: int = 250

@@ -21,9 +21,17 @@ from pathlib import Path
 
 from ..normalize import normalize_text
 
-__all__ = ["Lexicon", "load_seed_lexicon", "load_confusions", "SEED_PATH", "CONFUSIONS_PATH"]
+__all__ = [
+    "Lexicon",
+    "load_seed_lexicon",
+    "load_confusions",
+    "SEED_PATH",
+    "BUILT_PATH",
+    "CONFUSIONS_PATH",
+]
 
 SEED_PATH = Path(__file__).parent / "data" / "seed_lexicon.txt"
+BUILT_PATH = Path(__file__).parent / "data" / "lexicon.txt"
 CONFUSIONS_PATH = Path(__file__).parent / "data" / "confusions.txt"
 
 
@@ -123,8 +131,17 @@ class Lexicon:
 
 
 def load_seed_lexicon() -> Lexicon:
-    """Load the bundled seed lexicon."""
-    return Lexicon.from_file(SEED_PATH)
+    """Load the bundled lexicon.
+
+    Prefers the generated file from ``scripts/build_lexicon.py`` (MeSH + RxNorm
+    merged with the seed list) and falls back to the seed list alone when it has
+    not been generated.
+
+    Caution when comparing runs: domain WER is computed over whichever terms this
+    returns, so a larger lexicon changes the denominator. DWER figures are only
+    comparable within one lexicon version.
+    """
+    return Lexicon.from_file(BUILT_PATH if BUILT_PATH.exists() else SEED_PATH)
 
 
 class Confusions:

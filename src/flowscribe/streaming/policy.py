@@ -126,6 +126,16 @@ class LocalAgreement:
         """
         return self._committed[-1].end if self._committed else 0.0
 
+    @property
+    def pending(self) -> bool:
+        """Whether any hypothesis is still awaiting confirmation.
+
+        The streaming loop checks this before skipping a silent block: unflushed
+        text needs another decode to be confirmed, and silence is precisely what
+        follows the last word of an utterance.
+        """
+        return bool(self._history and self._history[-1])
+
     def reset(self) -> None:
         self._committed = []
         self._history = []
