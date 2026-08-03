@@ -200,7 +200,8 @@ class ParakeetOnnxEngine:
         # through as `path` makes it look for weights that were never put there.
         # So model_dir steers the Hugging Face cache instead, and an explicitly
         # pre-staged model directory is a separate option.
-        local_path = options.pop("path", None)
+        raw_path = options.pop("path", None)
+        local_path = str(raw_path) if raw_path is not None else None
         if local_path is None and model_dir:
             os.environ.setdefault("HF_HUB_CACHE", str(model_dir))
 

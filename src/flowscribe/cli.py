@@ -8,9 +8,12 @@ flowscribe backends
 
 from __future__ import annotations
 
+import json
+import signal
 import sys
+import threading
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
 import typer
 
@@ -130,6 +133,173 @@ def transcribe(
         fg=typer.colors.BRIGHT_BLACK,
         err=True,
     )
+
+
+@app.command()
+def listen(
+    seconds: Annotated[
+        float | None,
+        typer.Option(help="Stop after this many seconds. Omit to run until Ctrl-C."),
+    ] = None,
+    device: Annotated[
+        str | None, typer.Option(help="Input device index or name. Omit for the system default.")
+    ] = None,
+    model: Annotated[str | None, typer.Option(help="ASR model for the live tier.")] = None,
+    language: Annotated[str | None, typer.Option(help="Language code.")] = None,
+    config_file: Annotated[Path | None, typer.Option("--config", "-c")] = None,
+    correct: Annotated[
+        bool, typer.Option(help="Run LLM correction on the final transcript.")
+    ] = False,
+    diarize: Annotated[
+        bool, typer.Option(help="Attribute the final transcript to speakers.")
+    ] = False,
+    allow_network: Annotated[bool, typer.Option("--allow-network")] = False,
+    output: Annotated[
+        Path | None, typer.Option("--output", "-o", help="Write the final transcript here.")
+    ] = None,
+    list_devices: Annotated[
+        bool, typer.Option("--list-devices", help="Show capture devices and exit.")
+    ] = False,
+) -> None:
+    """Transcribe live from a microphone, emitting JSON events.
+
+    One JSON object per line on stdout: `partial` while text is still unstable,
+    `final` once the streaming policy has confirmed it, then a single `complete`
+    record carrying the authoritative transcript.
+
+    Stop with Ctrl-C. The recording is finalized rather than discarded.
+    """
+    from .audio.microphone import MicrophoneSource, default_input_device, list_input_devices
+    from .live import event_to_dict
+    from .pipeline import Pipeline
+
+    if list_devices:
+        try:
+            for entry in list_input_devices():
+                typer.echo(json.dumps(entry))
+        except FlowscribeError as exc:
+            _fail(str(exc))
+        return
+
+    try:
+        config = Config.from_yaml(config_file) if config_file else Config()
+    except FlowscribeError as exc:
+        _fail(str(exc))
+
+    if model:
+        config.live.model = model
+        config.final.model = model
+    if language:
+        config.live.language = language
+        config.final.language = language
+    if allow_network:
+        config.offline_only = False
+    config.correction.enabled = correct
+    config.diarization.enabled = diarize
+
+    if correct and config.correction.backend in ("null", "passthrough"):
+        _fail("--correct needs a corrector backend; set correction.backend in a config file.")
+    if diarize and config.diarization.backend in ("null", "passthrough"):
+        _fail("--diarize needs a diarizer backend; set diarization.backend in a config file.")
+
+    selected: int | str | None = device
+    if device is not None and device.isdigit():
+        selected = int(device)
+
+    try:
+        info = default_input_device() if device is None else {"name": str(device)}
+        source = MicrophoneSource(device=selected, chunk_seconds=config.chunk_seconds)
+    except FlowscribeError as exc:
+        _fail(str(exc))
+
+    typer.secho(f"listening on {info['name']}  (Ctrl-C to stop)", fg=typer.colors.CYAN, err=True)
+
+    # Ctrl-C closes the capture device and lets the stream end on its own, so the
+    # final tier still runs. Killing the generator outright would throw away a
+    # whole appointment because someone stopped the recording.
+    stopping = threading.Event()
+
+    def handle_interrupt(signum: int, frame: object) -> None:
+        if not stopping.is_set():
+            stopping.set()
+            typer.secho("\nfinalizing ...", fg=typer.colors.YELLOW, err=True)
+            source.stop()
+
+    signal.signal(signal.SIGINT, handle_interrupt)
+
+    deadline = threading.Timer(seconds, source.stop) if seconds else None
+    if deadline:
+        deadline.daemon = True
+        deadline.start()
+
+    final_record: dict[str, Any] | None = None
+    try:
+        with Pipeline(config) as pipeline, source:
+            for event in pipeline.stream(source):
+                record = event_to_dict(event)
+                if record["type"] == "complete":
+                    final_record = record
+                sys.stdout.write(json.dumps(record) + "\n")
+                sys.stdout.flush()
+    except FlowscribeError as exc:
+        _fail(str(exc))
+    finally:
+        if deadline:
+            deadline.cancel()
+
+    if source.overflows or source.dropped_blocks:
+        typer.secho(
+            f"warning: {source.overflows} input overflow(s), "
+            f"{source.dropped_blocks} dropped block(s) -- audio was lost",
+            fg=typer.colors.YELLOW,
+            err=True,
+        )
+
+    if output and final_record:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(json.dumps(final_record, indent=2), encoding="utf-8")
+        typer.secho(f"wrote {output}", fg=typer.colors.GREEN, err=True)
+
+
+@app.command()
+def ui(
+    host: Annotated[str, typer.Option(help="Bind address. Loopback by default.")] = "127.0.0.1",
+    port: Annotated[int, typer.Option(help="Port to serve on.")] = 8000,
+    model: Annotated[str | None, typer.Option(help="ASR model.")] = None,
+    language: Annotated[str | None, typer.Option(help="Language code.")] = None,
+    config_file: Annotated[Path | None, typer.Option("--config", "-c")] = None,
+    correct: Annotated[
+        bool, typer.Option(help="Run LLM correction on the final transcript.")
+    ] = False,
+    allow_network: Annotated[bool, typer.Option("--allow-network")] = False,
+) -> None:
+    """Serve the browser demo UI.
+
+    Binds to loopback by default: the page streams live clinical audio, and
+    exposing that on a LAN interface should be a deliberate act, not a default.
+    """
+    try:
+        from .server import serve
+    except ImportError:
+        _fail("The demo UI needs extra packages. Install with: pip install 'flowscribe[ui]'")
+
+    try:
+        config = Config.from_yaml(config_file) if config_file else Config()
+    except FlowscribeError as exc:
+        _fail(str(exc))
+
+    if model:
+        config.live.model = model
+        config.final.model = model
+    if language:
+        config.live.language = language
+        config.final.language = language
+    if allow_network:
+        config.offline_only = False
+    config.correction.enabled = correct
+
+    typer.secho(f"demo UI on http://{host}:{port}", fg=typer.colors.CYAN)
+    serve(config, host=host, port=port)
 
 
 @app.command("fetch-models")

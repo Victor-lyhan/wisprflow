@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>flowscribe — live dental transcription</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --line: #262b35; --text: #e6e9ef;
+    --dim: #8b93a3; --accent: #5eb3f6; --live: #f0b45e; --ok: #6ddba0;
+    --flag: #f2777a; --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --bg:#f7f8fa; --panel:#fff; --line:#e2e5ea; --text:#1a1d23;
+            --dim:#6b7280; --accent:#1f6feb; --live:#b26b00; --ok:#137a4a; --flag:#c0362c; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text);
+         font:15px/1.55 system-ui, -apple-system, sans-serif; }
+  header { display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+           padding:14px 20px; border-bottom:1px solid var(--line); }
+  h1 { font-size:15px; margin:0; font-weight:600; letter-spacing:.2px; }
+  .sub { color:var(--dim); font-size:13px; }
+  button { font:inherit; font-weight:600; padding:8px 18px; border-radius:7px;
+           border:1px solid var(--line); background:var(--accent); color:#fff; cursor:pointer; }
+  button.stop { background:var(--flag); }
+  button:disabled { opacity:.45; cursor:default; }
+  #dot { width:9px; height:9px; border-radius:50%; background:var(--dim); display:inline-block; }
+  #dot.on { background:var(--flag); animation:pulse 1.2s infinite; }
+  @keyframes pulse { 50% { opacity:.3; } }
+  main { display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--line);
+         height:calc(100vh - 59px); }
+  @media (max-width:900px) { main { grid-template-columns:1fr; height:auto; } }
+  section { background:var(--bg); display:flex; flex-direction:column; min-height:0; }
+  .head { padding:10px 20px; border-bottom:1px solid var(--line); color:var(--dim);
+          font-size:12px; text-transform:uppercase; letter-spacing:.7px; }
+  .body { padding:16px 20px; overflow:auto; flex:1; min-height:200px; }
+  .u { margin-bottom:10px; padding-left:12px; border-left:2px solid var(--line); }
+  .u.final { border-left-color:var(--ok); }
+  .u.partial { border-left-color:var(--live); color:var(--dim); font-style:italic; }
+  .t { font-variant-numeric:tabular-nums; color:var(--dim); font-size:11px;
+       font-family:var(--mono); margin-right:8px; }
+  pre { margin:0; font-family:var(--mono); font-size:12px; line-height:1.5;
+        white-space:pre-wrap; word-break:break-word; color:var(--text); }
+  .empty { color:var(--dim); font-style:italic; }
+  .note { padding:9px 20px; background:var(--panel); border-bottom:1px solid var(--line);
+          color:var(--dim); font-size:12.5px; }
+  .flag { color:var(--flag); }
+</style>
+</head>
+<body>
+<header>
+  <h1>flowscribe</h1>
+  <span class="sub" id="device">…</span>
+  <span style="flex:1"></span>
+  <span id="dot"></span>
+  <span class="sub" id="status">idle</span>
+  <button id="btn">Start listening</button>
+</header>
+
+<div class="note">
+  Live text is <strong>provisional</strong> and may be revised — treat only the
+  final transcript as the record. Speaker labels and terminology correction are
+  applied in the final pass.
+</div>
+
+<main>
+  <section>
+    <div class="head">Live transcript</div>
+    <div class="body" id="live"><div class="empty">Press start and speak.</div></div>
+  </section>
+  <section>
+    <div class="head">JSON output</div>
+    <div class="body"><pre id="json" class="empty">Events appear here as they arrive.</pre></div>
+  </section>
+</main>
+
+<script>
+const btn = document.getElementById('btn');
+const live = document.getElementById('live');
+const out = document.getElementById('json');
+const dot = document.getElementById('dot');
+const statusEl = document.getElementById('status');
+const deviceEl = document.getElementById('device');
+
+let socket = null, running = false, partial = null;
+const records = [];
+
+fetch('/devices').then(r => r.json()).then(d => {
+  deviceEl.textContent = d.error ? ('no input device: ' + d.error)
+                                 : ('input: ' + (d.default?.name ?? 'unknown'));
+}).catch(() => { deviceEl.textContent = ''; });
+
+const time = s => `${String(Math.floor(s / 60)).padStart(2,'0')}:${(s % 60).toFixed(1).padStart(4,'0')}`;
+
+function render(rec) {
+  records.push(rec);
+  // Show newest last but keep the pane scrolled to it, so a long appointment
+  // still reads naturally.
+  out.textContent = records.map(r => JSON.stringify(r, null, 2)).join('\n');
+  out.classList.remove('empty');
+  out.parentElement.scrollTop = out.parentElement.scrollHeight;
+}
+
+function addUtterance(rec, provisional) {
+  if (live.querySelector('.empty')) live.innerHTML = '';
+  const el = document.createElement('div');
+  el.className = 'u ' + (provisional ? 'partial' : 'final');
+  const speaker = rec.speaker ? `<strong>${rec.speaker}:</strong> ` : '';
+  el.innerHTML = `<span class="t">${time(rec.start)}</span>${speaker}${rec.text}`;
+  live.appendChild(el);
+  live.scrollTop = live.scrollHeight;
+  return el;
+}
+
+function handle(rec) {
+  render(rec);
+  if (rec.type === 'partial') {
+    if (partial) partial.remove();
+    partial = addUtterance(rec, true);
+  } else if (rec.type === 'final') {
+    if (partial) { partial.remove(); partial = null; }
+    addUtterance(rec, false);
+  } else if (rec.type === 'complete') {
+    if (partial) { partial.remove(); partial = null; }
+    live.innerHTML = '';
+    const t = rec.corrected ?? rec.verbatim;
+    (t.utterances ?? []).forEach(u => addUtterance(u, false));
+    if (rec.flags?.length) {
+      const el = document.createElement('div');
+      el.className = 'u flag';
+      el.innerHTML = '<strong>Review:</strong> ' + rec.flags
+        .map(f => `“${f.term}” — could be ${f.alternatives.join(' / ')}`).join('; ');
+      live.appendChild(el);
+    }
+    statusEl.textContent = `complete — ${(t.utterances ?? []).length} utterances, ${rec.edits.length} corrections`;
+  } else if (rec.type === 'error') {
+    statusEl.textContent = 'error: ' + rec.message;
+  }
+}
+
+function stop() {
+  running = false;
+  dot.classList.remove('on');
+  btn.textContent = 'Start listening';
+  btn.classList.remove('stop');
+  btn.disabled = true;
+  statusEl.textContent = 'finalizing…';
+  if (socket && socket.readyState === WebSocket.OPEN) socket.send('stop');
+}
+
+btn.onclick = () => {
+  if (running) { stop(); return; }
+
+  records.length = 0;
+  live.innerHTML = '<div class="empty">Listening…</div>';
+  out.textContent = '';
+  socket = new WebSocket(`ws://${location.host}/stream`);
+
+  socket.onopen = () => {
+    running = true;
+    dot.classList.add('on');
+    btn.textContent = 'Stop';
+    btn.classList.add('stop');
+    statusEl.textContent = 'listening';
+  };
+  socket.onmessage = e => handle(JSON.parse(e.data));
+  socket.onclose = () => {
+    running = false;
+    dot.classList.remove('on');
+    btn.textContent = 'Start listening';
+    btn.classList.remove('stop');
+    btn.disabled = false;
+    if (statusEl.textContent === 'finalizing…') statusEl.textContent = 'idle';
+  };
+  socket.onerror = () => { statusEl.textContent = 'connection failed'; };
+};
+</script>
+</body>
+</html>
