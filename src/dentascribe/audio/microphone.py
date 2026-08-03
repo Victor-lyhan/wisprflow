@@ -99,7 +99,19 @@ class MicrophoneSource:
         self._sd = _require_sounddevice()
 
         if sample_rate is None or channels is None:
-            info = self._sd.query_devices(device, kind="input")
+            # Wrapped here, not just in start(): a machine with no sound card at
+            # all -- a container, a CI runner, a Colab VM -- fails at this query,
+            # and a raw PortAudioError traceback tells the user nothing about
+            # what to do.
+            try:
+                info = self._sd.query_devices(device, kind="input")
+            except Exception as exc:  # noqa: BLE001 - sounddevice raises bare types
+                raise AudioError(
+                    f"No usable audio input device ({exc}). Live capture needs a "
+                    "microphone attached to the machine running dentascribe. A "
+                    "remote or containerised host -- Colab, a server, a CI runner "
+                    "-- generally has none; transcribe an audio file there instead."
+                ) from exc
             sample_rate = sample_rate or int(info["default_samplerate"])
             channels = min(channels, int(info["max_input_channels"])) or 1
 
