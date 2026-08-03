@@ -36,7 +36,7 @@ jobs:
 
       - name: Test before publishing
         run: |
-          uv sync --extra dev --extra whisper --extra eval --extra llm
+          uv sync --extra dev --extra whisper --extra eval --extra llm --extra ui --extra parakeet --extra vad
           uv run ruff check src/ tests/ scripts/
           uv run mypy src/
           uv run pytest -m "not slow" -q

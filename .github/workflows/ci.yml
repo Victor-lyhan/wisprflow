@@ -32,7 +32,13 @@ jobs:
           enable-cache: true
 
       - name: Install
-        run: uv sync --python ${{ matrix.python }} --extra dev --extra whisper --extra eval --extra llm
+        # Every extra whose package mypy type-checks must be installed here.
+        # mypy checks all of src/, so omitting `ui` left fastapi missing and
+        # turned the server module into five errors -- red on main for three
+        # commits while passing locally, where the venv had it. Excluded:
+        # `mic` (needs system PortAudio), `mlx` (Apple-only), `denoise` (heavy);
+        # those are covered by ignore_missing_imports.
+        run: uv sync --python ${{ matrix.python }} --extra dev --extra whisper --extra eval --extra llm --extra ui --extra parakeet --extra vad
 
       - name: Lint
         run: |
