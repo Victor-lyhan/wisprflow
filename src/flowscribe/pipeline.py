@@ -3,10 +3,10 @@
 Wires configured backends into a runnable pipeline. Stages are resolved lazily,
 so a config with correction disabled never imports an LLM client.
 
-Scope note: this module implements the **final tier** -- full-context
-recognition over complete audio, which is the authoritative output. The live
-tier (LocalAgreement-2 confirmation and online diarization) builds on these same
-stages and lands in a later phase; it is not a separate pipeline.
+Two entry points share one set of stages: ``transcribe()`` runs the final tier
+over complete audio, and ``stream()`` emits provisional text during capture then
+finalizes through that same tier. They call ``_run_final`` in common, so they
+cannot drift apart.
 """
 
 from __future__ import annotations
@@ -29,18 +29,16 @@ from .contracts import (
     Event,
     FinalUtterance,
     PartialUtterance,
-    SpeakerRelabel,
     Transcript,
     TranscriptComplete,
     TranscriptionResult,
-    Utterance,
     utterance_id,
 )
 from .dental.lexicon import load_confusions
 from .dental.review import flag_confusions
 from .errors import OfflineViolation
-from .protocols import VAD, ASREngine, AudioSource, Corrector, Diarizer, Preprocessor
-from .registry import ASR, CORRECTOR, DIARIZER, VAD_REGISTRY
+from .protocols import VAD, ASREngine, AudioSource, Corrector, Preprocessor
+from .registry import ASR, CORRECTOR, VAD_REGISTRY
 from .streaming.policy import LocalAgreement
 
 __all__ = ["Pipeline", "RunStats", "transcribe_file", "stream_file"]
@@ -53,14 +51,13 @@ class RunStats:
     audio_seconds: float = 0.0
     ingest_seconds: float = 0.0
     asr_seconds: float = 0.0
-    diarize_seconds: float = 0.0
     correct_seconds: float = 0.0
     edits: int = 0
     vad_skipped_blocks: int = 0
 
     @property
     def total_seconds(self) -> float:
-        return self.ingest_seconds + self.asr_seconds + self.diarize_seconds + self.correct_seconds
+        return self.ingest_seconds + self.asr_seconds + self.correct_seconds
 
     @property
     def real_time_factor(self) -> float:
@@ -99,7 +96,6 @@ class Pipeline:
         asr: ASREngine | None = None,
         live_asr: ASREngine | None = None,
         vad: VAD | None = None,
-        diarizer: Diarizer | None = None,
         corrector: Corrector | None = None,
         preprocessor: Preprocessor | None = None,
     ) -> None:
@@ -112,7 +108,6 @@ class Pipeline:
         self._asr = asr
         self._live_asr = live_asr
         self._vad = vad
-        self._diarizer = diarizer
         self._corrector = corrector
         self.preprocessor: Preprocessor = preprocessor or NullPreprocessor()
         self.stats = RunStats()
@@ -177,21 +172,6 @@ class Pipeline:
                 **cfg.options,
             )
         return self._vad
-
-    @property
-    def diarizer(self) -> Diarizer | None:
-        if not self.config.diarization.enabled:
-            return None
-        if self._diarizer is None:
-            cfg = self.config.diarization
-            self._diarizer = DIARIZER.create(
-                cfg.backend,
-                min_speakers=cfg.min_speakers,
-                max_speakers=cfg.max_speakers,
-                model_dir=str(self.config.model_dir),
-                **cfg.options,
-            )
-        return self._diarizer
 
     @property
     def corrector(self) -> Corrector | None:
@@ -265,18 +245,10 @@ class Pipeline:
         self.stats.asr_seconds = time.perf_counter() - t0
 
         # Renumber so ids are contiguous and stable regardless of what the
-        # backend produced; SpeakerRelabel events reference these.
+        # backend produced, so a consumer can reference them stably.
         utterances = [
             u.model_copy(update={"id": utterance_id(i)}) for i, u in enumerate(utterances)
         ]
-
-        diarizer = self.diarizer
-        if diarizer is not None and utterances:
-            t0 = time.perf_counter()
-            utterances = diarizer.assign(
-                utterances, audio=audio, num_speakers=self.config.diarization.num_speakers
-            )
-            self.stats.diarize_seconds = time.perf_counter() - t0
 
         verbatim = Transcript(
             utterances=utterances,
@@ -312,16 +284,14 @@ class Pipeline:
         once the recording ends:
 
         * :class:`PartialUtterance` -- unstable hypothesis, will be superseded.
-        * :class:`FinalUtterance` -- confirmed by the streaming policy. Text is
-          stable; the speaker label may still be revised.
-        * :class:`SpeakerRelabel` -- offline diarization disagreed with the live
-          guess for a span already displayed.
+        * :class:`FinalUtterance` -- confirmed by the streaming policy; the text
+          is stable from that point on.
         * :class:`TranscriptComplete` -- terminal, carrying the final-tier result.
 
-        The two tiers exist because diarization needs the whole recording to
-        cluster speakers, which cannot be reconciled with emitting text during
-        capture. So live output is explicitly provisional, and the final pass
-        re-transcribes the complete audio with full context.
+        The two tiers exist because a recognizer revises its output as more
+        context arrives. Live text is therefore explicitly provisional, and the
+        final pass re-transcribes the complete audio with full context -- it is
+        materially more accurate, so it is the one to keep.
         """
         policy = LocalAgreement(self.config.confirm_after)
         engine = self.live_asr
@@ -332,7 +302,6 @@ class Pipeline:
         buffer = np.zeros(0, dtype=np.float32)
         buffer_start = 0.0
         full: list[npt.NDArray[np.float32]] = []
-        live_emitted: list[Utterance] = []
 
         for chunk in source.chunks():
             processed = self.preprocessor.process(chunk)
@@ -365,7 +334,6 @@ class Pipeline:
             confirmed, pending = policy.update(hypothesis)
 
             for utterance in confirmed:
-                live_emitted.append(utterance)
                 yield FinalUtterance(utterance=utterance)
             for utterance in pending:
                 yield PartialUtterance(utterance=utterance)
@@ -384,7 +352,6 @@ class Pipeline:
                 break
 
         for utterance in policy.flush():
-            live_emitted.append(utterance)
             yield FinalUtterance(utterance=utterance)
 
         self.stats.vad_skipped_blocks = skipped
@@ -401,11 +368,10 @@ class Pipeline:
             hotwords=hotwords,
         )
 
-        yield from _relabel_events(live_emitted, result.best)
         yield TranscriptComplete(result=result)
 
     def close(self) -> None:
-        for stage in (self._asr, self._live_asr, self._vad, self._diarizer, self._corrector):
+        for stage in (self._asr, self._live_asr, self._vad, self._corrector):
             closer = getattr(stage, "close", None)
             if callable(closer):
                 closer()
@@ -415,36 +381,6 @@ class Pipeline:
 
     def __exit__(self, *exc: object) -> None:
         self.close()
-
-
-def _relabel_events(live: list[Utterance], final: Transcript) -> Iterator[SpeakerRelabel]:
-    """Reconcile live speaker guesses against the authoritative diarization.
-
-    Live labels come from online clustering over partial audio and are routinely
-    wrong early in a recording, before enough of each speaker has been heard.
-    Rather than leaving a consumer displaying stale attribution -- which in an
-    operatory means the patient's words shown as the dentist's -- each live
-    span is matched to the final utterance it most overlaps in time, and a
-    relabel is emitted where they disagree.
-    """
-    labelled = [u for u in final.utterances if u.speaker is not None]
-    if not labelled:
-        return
-
-    for utterance in live:
-        best: Utterance | None = None
-        best_overlap = 0.0
-        for candidate in labelled:
-            overlap = min(utterance.end, candidate.end) - max(utterance.start, candidate.start)
-            if overlap > best_overlap:
-                best, best_overlap = candidate, overlap
-
-        if best is not None and best.speaker != utterance.speaker:
-            yield SpeakerRelabel(
-                utterance_id=utterance.id,
-                speaker=best.speaker,  # type: ignore[arg-type]
-                role=best.role,
-            )
 
 
 def transcribe_file(

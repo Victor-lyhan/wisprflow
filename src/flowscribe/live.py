@@ -16,7 +16,6 @@ from .contracts import (
     Event,
     FinalUtterance,
     PartialUtterance,
-    SpeakerRelabel,
     TranscriptComplete,
 )
 
@@ -48,15 +47,6 @@ def event_to_dict(event: Event) -> dict[str, Any]:
             "start": round(event.utterance.start, 3),
             "end": round(event.utterance.end, 3),
             "text": event.utterance.text,
-            "speaker": event.utterance.speaker,
-        }
-
-    if isinstance(event, SpeakerRelabel):
-        return {
-            "type": "relabel",
-            "id": event.utterance_id,
-            "speaker": event.speaker,
-            "role": event.role,
         }
 
     if isinstance(event, TranscriptComplete):

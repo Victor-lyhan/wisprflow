@@ -134,8 +134,8 @@ def _segment(words: list[Word], offset: float) -> list[Utterance]:
     """Group words into utterances on sentence punctuation or a long pause.
 
     Parakeet returns one flat sequence, unlike Whisper which segments for you. A
-    transcript that is a single unbroken utterance is unusable for diarization
-    (there is nothing to attribute) and for review, so boundaries are derived
+    transcript that is a single unbroken utterance is unreadable for review and
+    gives the streaming policy nothing to anchor on, so boundaries are derived
     here.
     """
     if not words:

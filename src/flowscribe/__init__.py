@@ -20,7 +20,6 @@ from .config import (
     ASRConfig,
     Config,
     CorrectionConfig,
-    DiarizationConfig,
     VADConfig,
 )
 from .contracts import (
@@ -31,7 +30,6 @@ from .contracts import (
     FinalUtterance,
     Flag,
     PartialUtterance,
-    SpeakerRelabel,
     Transcript,
     TranscriptComplete,
     TranscriptionResult,
@@ -56,7 +54,6 @@ __all__ = [
     "Config",
     "ASRConfig",
     "VADConfig",
-    "DiarizationConfig",
     "CorrectionConfig",
     # contracts
     "AudioChunk",
@@ -71,7 +68,6 @@ __all__ = [
     "Event",
     "PartialUtterance",
     "FinalUtterance",
-    "SpeakerRelabel",
     "TranscriptComplete",
     # errors
     "FlowscribeError",

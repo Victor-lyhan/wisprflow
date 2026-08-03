@@ -186,23 +186,6 @@ class TestPipeline:
         assert result.edits[0].before != result.edits[0].after
         assert result.edits[0].kind == "term"
 
-    def test_diarizer_assigns_speakers(self, fake_asr, fake_diarizer, sine: np.ndarray) -> None:
-        from flowscribe.config import DiarizationConfig
-
-        config = Config(diarization=DiarizationConfig(enabled=True, backend="passthrough"))
-        pipeline = Pipeline(config, asr=fake_asr, diarizer=fake_diarizer)
-        result = pipeline.transcribe(ArrayAudioSource(sine))
-        assert all(u.speaker is not None for u in result.verbatim.utterances)
-
-    def test_null_diarizer_leaves_speakers_unset(self, fake_asr, sine: np.ndarray) -> None:
-        """Not SPEAKER_00: a fabricated single label is indistinguishable from a
-        real single-speaker result and would misattribute the patient."""
-        from flowscribe.config import DiarizationConfig
-
-        config = Config(diarization=DiarizationConfig(enabled=True, backend="passthrough"))
-        result = Pipeline(config, asr=fake_asr).transcribe(ArrayAudioSource(sine))
-        assert all(u.speaker is None for u in result.verbatim.utterances)
-
     def test_utterance_ids_are_contiguous(self, sine: np.ndarray) -> None:
         from tests.conftest import FakeASREngine
 

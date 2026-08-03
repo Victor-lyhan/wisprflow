@@ -11,7 +11,20 @@
 # evaluation found in every system tested, where headline word error rates looked
 # acceptable.
 #
-# Format: comma-separated group, one group per line. Order carries no meaning.
+# Format: comma-separated group, one group per line. Order within a line carries
+# no meaning.
+#
+# SEVERITY. Groups sit under a `## severity: high|low` header. Only `high` is
+# flagged by default, and that restraint is the point: "mesial" and "distal"
+# genuinely are confusable, but they appear in nearly every dental note, so
+# flagging them every time buries the rare flag that matters. A reviewer who
+# sees eight flags on four sentences stops reading flags.
+#
+# high -- getting it wrong changes the diagnosis, the drug, or the treatment.
+# low  -- confusable, but too frequent to flag without causing alert fatigue.
+#         Still used to prompt the corrector, just not surfaced for review.
+
+## severity: high
 
 # Diagnosis inversions -- opposite treatment implications
 reversible pulpitis, irreversible pulpitis
@@ -19,7 +32,19 @@ vital, nonvital
 symptomatic, asymptomatic
 acute, chronic
 
-# Directional opposites -- wrong tooth surface
+
+# Perio severity -- different disease, different treatment
+gingivitis, periodontitis
+
+# Procedures with different scope
+
+# Dentition -- wrong set of teeth entirely
+primary, permanent
+deciduous, succedaneous
+
+## severity: low
+
+# Directional opposites. Real confusions, but far too frequent to surface.
 mesial, distal
 buccal, lingual
 facial, palatal
@@ -35,9 +60,6 @@ hyperplasia, hypoplasia
 hypertrophy, atrophy
 localized, generalized
 
-# Dentition
-primary, permanent
-deciduous, succedaneous
 
 # Procedures with different scope
 pulpotomy, pulpectomy
@@ -50,8 +72,6 @@ reline, rebase
 composite, compomer
 amalgam, alloy
 
-# Perio severity
-gingivitis, periodontitis
 
 # Anaesthetics -- different drugs, similar sound
 lidocaine, prilocaine

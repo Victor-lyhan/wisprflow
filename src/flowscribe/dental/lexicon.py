@@ -16,6 +16,7 @@ scored as the two unrelated unigrams "root" and "planing".
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable, Iterator
 from pathlib import Path
 
@@ -155,11 +156,12 @@ class Confusions:
     get confused with which.
     """
 
-    def __init__(self, groups: Iterable[Iterable[str]]) -> None:
+    def __init__(self, groups: Iterable[tuple[Iterable[str], str]]) -> None:
         self._counterparts: dict[str, list[str]] = {}
+        self._severity: dict[str, str] = {}
         self._max_phrase = 1
 
-        for group in groups:
+        for group, severity in groups:
             members = [normalize_text(m, numbers_to_digits=False) for m in group]
             members = [m for m in members if m]
             if len(members) < 2:
@@ -167,6 +169,7 @@ class Confusions:
             for member in members:
                 others = [m for m in members if m != member]
                 self._counterparts.setdefault(member, []).extend(others)
+                self._severity[member] = severity
                 self._max_phrase = max(self._max_phrase, len(member.split()))
 
     def __len__(self) -> int:
@@ -179,27 +182,41 @@ class Confusions:
 
     @classmethod
     def from_file(cls, path: str | Path) -> Confusions:
-        groups = []
+        groups: list[tuple[list[str], str]] = []
+        severity = "high"
         for line in Path(path).read_text(encoding="utf-8").splitlines():
+            marker = re.match(r"\s*##\s*severity:\s*(\w+)", line)
+            if marker:
+                severity = marker.group(1).lower()
+                continue
             text = line.split("#", 1)[0].strip()
             if not text:
                 continue
             members = [part.strip() for part in text.split(",")]
             if len(members) >= 2:
-                groups.append(members)
+                groups.append((members, severity))
         return cls(groups)
+
+    def severity(self, term: str) -> str | None:
+        """How serious confusing this term would be."""
+        return self._severity.get(normalize_text(term, numbers_to_digits=False))
 
     def counterparts(self, term: str) -> list[str]:
         """Terms confusable with ``term``."""
         key = normalize_text(term, numbers_to_digits=False)
         return list(dict.fromkeys(self._counterparts.get(key, [])))
 
-    def find(self, text: str) -> list[str]:
+    def find(self, text: str, *, severities: Iterable[str] = ("high", "low")) -> list[str]:
         """Counterparts of every confusable term appearing in ``text``.
 
         Matches longest phrase first so "reversible pulpitis" resolves as the
         two-word diagnosis rather than the bare word "reversible".
+
+        Defaults to every severity because the correction prompt benefits from
+        knowing about directional opposites even where flagging them would be
+        noise. Review flagging asks for ``high`` only.
         """
+        wanted = set(severities)
         tokens = normalize_text(text, numbers_to_digits=False).split()
         found: dict[str, None] = {}
         i = 0
@@ -207,8 +224,9 @@ class Confusions:
             for length in range(min(self._max_phrase, len(tokens) - i), 0, -1):
                 phrase = " ".join(tokens[i : i + length])
                 if phrase in self._counterparts:
-                    for other in self.counterparts(phrase):
-                        found.setdefault(other, None)
+                    if self._severity.get(phrase, "high") in wanted:
+                        for other in self.counterparts(phrase):
+                            found.setdefault(other, None)
                     i += length
                     break
             else:

@@ -34,7 +34,6 @@ python scripts/make_smoke_dataset.py --out data/smoke   # macOS only, synthetic
 ## Architecture
 
 ```
-audio → preprocess → VAD → ASR → streaming policy → diarize → LLM correct → sink
 ```
 
 Every stage is a `Protocol` in `protocols.py`, resolved by name through `registry.py` via `importlib.metadata` entry points. Backends declare themselves in `pyproject.toml`; **external projects register their own the same way**, which is the mechanism behind "pluggable into other projects". Resolution is lazy — listing backends never imports them, so uninstalled extras cost nothing.
@@ -46,10 +45,8 @@ Key files:
 
 ### Two-tier output
 
-"Start transcribing while recording" conflicts with diarization, which needs the whole recording to cluster speakers. Resolved by two tiers:
 
 - **Live** — provisional, ~2–4 s latency, online speaker labels that may be revised.
-- **Final** — authoritative, full-context ASR plus offline diarization, produced when recording ends.
 
 `Transcript.tier` records which. The final tier *is* the offline pipeline, so batch work is not throwaway. **Batch is a degenerate case of streaming**: a finished-file `AudioSource` just yields its chunks and sets `is_last`. There is no separate batch path — don't add one.
 
@@ -69,7 +66,6 @@ Key files:
 
 **Never bundle CDT or SNODENT.** Both are ADA copyright requiring a paid commercial license to redistribute, even though practices may use CDT freely in their own records. `dental/data/seed_lexicon.txt` is generic terminology only; practices supply codes at runtime via `CorrectionConfig.user_codes_path`. There is a test asserting no CDT codes are present.
 
-**The null diarizer leaves `speaker` as `None`, not `SPEAKER_00`.** A fabricated single label is indistinguishable downstream from a genuine single-speaker result, and would misattribute the patient's words to the dentist.
 
 **Adding an ASR backend**: implement the `ASREngine` protocol, register an entry point under `flowscribe.asr`, then subclass `ASREngineContract` in `tests/test_contracts_and_sinks.py`. That suite is what makes interchangeability a checked property — the real faster-whisper engine and the test fake pass identically.
 
@@ -111,6 +107,5 @@ Working end to end: contracts, registry, config, audio ingestion (file / growing
 
 Measured: domain WER 15.38% → 3.08% with correction; first partial at 1.30 s and first confirmed text at 4.24 s on a growing file.
 
-Implemented but **unverified**: `diarize/pyannote_diarizer.py` — pyannote models are HF-gated, so it needs `huggingface-cli login` plus accepting the model conditions before it can run at all.
 
 Not built: Silero VAD backend, Parakeet ONNX backend (the fast Windows CPU path), lexicon build from MeSH/RxNorm/UMLS, FastAPI service, Windows testing. See `Development.md`.

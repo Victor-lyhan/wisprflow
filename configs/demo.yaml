@@ -1,0 +1,36 @@
+# Live demo: microphone in, corrected transcript out.
+#
+#   ollama serve && ollama pull qwen3:8b     # once, for correction
+#   flowscribe ui -c configs/demo.yaml --allow-network
+#   flowscribe listen -c configs/demo.yaml --allow-network
+#
+# --allow-network is only needed the first time, while models download. After
+# that the pipeline runs offline.
+
+# Parakeet on both tiers. It is the fastest accurate option on CPU (RTF ~0.08),
+# which matters for the live tier because the growing buffer is re-decoded on
+# every chunk.
+live:
+  backend: parakeet-onnx
+  model: nemo-parakeet-tdt-0.6b-v3
+  language: en
+
+final:
+  backend: parakeet-onnx
+  model: nemo-parakeet-tdt-0.6b-v3
+  language: en
+
+# Runs once at the end, on stable text. Live output stays uncorrected because
+# correcting text that is still being revised would rewrite itself on screen.
+correction:
+  enabled: true
+  backend: ollama
+  model: qwen3:8b
+  endpoint: http://127.0.0.1:11434
+
+# Free, deterministic, no model: flags terms confusable with a clinically
+# different one for human review.
+flag_confusable: true
+
+chunk_seconds: 1.0
+offline_only: true

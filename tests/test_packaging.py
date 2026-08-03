@@ -34,7 +34,6 @@ REQUIRED_SUBPACKAGES = [
     "audio",
     "correct",
     "dental",
-    "diarize",
     "evaluation",
     "sinks",
     "streaming",

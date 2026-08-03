@@ -47,23 +47,6 @@ class TestContracts:
         )
         assert t.text == "tooth three"
 
-    def test_speaker_labels_preserve_first_appearance_order(self) -> None:
-        t = Transcript(
-            utterances=[
-                Utterance(id="u00000", start=0, end=1, text="a", speaker="SPEAKER_01"),
-                Utterance(id="u00001", start=1, end=2, text="b", speaker="SPEAKER_00"),
-                Utterance(id="u00002", start=2, end=3, text="c", speaker="SPEAKER_01"),
-            ]
-        )
-        assert t.speaker_labels() == ["SPEAKER_01", "SPEAKER_00"]
-
-    def test_speaker_and_role_are_distinct(self) -> None:
-        """Diarization can be right while role assignment is unknown; conflating
-        them would lose that."""
-        u = Utterance(id="u00000", start=0, end=1, text="x", speaker="SPEAKER_00")
-        assert u.speaker == "SPEAKER_00"
-        assert u.role is None
-
     def test_best_prefers_corrected(self) -> None:
         verbatim = Transcript(utterances=[Utterance(id="u0", start=0, end=1, text="buckle")])
         corrected = Transcript(utterances=[Utterance(id="u0", start=0, end=1, text="buccal")])
@@ -83,7 +66,6 @@ class TestContracts:
                     end=1,
                     text="tooth three",
                     words=[Word(text="tooth", start=0, end=0.5, confidence=0.9)],
-                    speaker="SPEAKER_00",
                 )
             ],
             engine="fake",
@@ -95,11 +77,19 @@ class TestContracts:
 def transcript() -> Transcript:
     return Transcript(
         utterances=[
+            Utterance(id="u00000", start=0.0, end=2.5, text="Tooth three has caries."),
             Utterance(
-                id="u00000", start=0.0, end=2.5, text="Tooth three has caries.", speaker="S0"
+                id="u00001",
+                start=2.5,
+                end=4.0,
+                text="Understood.",
             ),
-            Utterance(id="u00001", start=2.5, end=4.0, text="Understood.", speaker="S1"),
-            Utterance(id="u00002", start=4.0, end=6.0, text="Any pain?", speaker="S0"),
+            Utterance(
+                id="u00002",
+                start=4.0,
+                end=6.0,
+                text="Any pain?",
+            ),
         ],
         engine="fake",
     )
@@ -114,28 +104,16 @@ class TestSinks:
         assert len(lines) == 3
         assert all(json.loads(line)["id"] for line in lines)
 
-    def test_text_labels_speakers(self, transcript: Transcript) -> None:
-        assert "S0: " in TextSink().emit(transcript)
-
-    def test_text_merges_consecutive_same_speaker(self) -> None:
+    def test_text_separates_utterances_by_blank_line(self) -> None:
         t = Transcript(
             utterances=[
-                Utterance(id="u0", start=0, end=1, text="First.", speaker="S0"),
-                Utterance(id="u1", start=1, end=2, text="Second.", speaker="S0"),
+                Utterance(id="u0", start=0, end=1, text="First."),
+                Utterance(id="u1", start=1, end=2, text="Second."),
             ]
         )
-        out = TextSink().emit(t)
-        assert out.count("S0:") == 1
+        assert TextSink().emit(t) == "First.\n\nSecond."
 
-    def test_text_prefers_role_over_label(self) -> None:
-        t = Transcript(
-            utterances=[
-                Utterance(id="u0", start=0, end=1, text="Open wide.", speaker="S0", role="dentist")
-            ]
-        )
-        assert "dentist:" in TextSink().emit(t)
-
-    def test_text_omits_prefix_without_diarization(self) -> None:
+    def test_single_utterance(self) -> None:
         t = Transcript(utterances=[Utterance(id="u0", start=0, end=1, text="Hello.")])
         assert TextSink().emit(t) == "Hello."
 

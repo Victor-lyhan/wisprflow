@@ -23,8 +23,20 @@ from .lexicon import Confusions
 __all__ = ["flag_confusions"]
 
 
-def flag_confusions(transcript: Transcript, confusions: Confusions) -> list[Flag]:
-    """Flag every clinically confusable term in the transcript."""
+def flag_confusions(
+    transcript: Transcript,
+    confusions: Confusions,
+    *,
+    severities: tuple[str, ...] = ("high",),
+) -> list[Flag]:
+    """Flag clinically confusable terms for review.
+
+    High severity only by default. Low-severity pairs -- chiefly the directional
+    opposites like mesial/distal -- appear in nearly every dental note, and
+    flagging them every time buries the rare flag that matters. A reviewer shown
+    eight flags on four sentences stops reading flags, which is worse than
+    showing none.
+    """
     flags: list[Flag] = []
 
     for utterance in transcript.utterances:
@@ -38,7 +50,7 @@ def flag_confusions(transcript: Transcript, confusions: Confusions) -> list[Flag
             for length in range(min(3, len(tokens) - index), 0, -1):
                 phrase = " ".join(tokens[index : index + length])
                 alternatives = confusions.counterparts(phrase)
-                if alternatives:
+                if alternatives and confusions.severity(phrase) in severities:
                     flags.append(
                         Flag(
                             utterance_id=utterance.id,

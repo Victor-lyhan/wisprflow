@@ -36,7 +36,6 @@ __all__ = [
     "TranscriptionResult",
     "PartialUtterance",
     "FinalUtterance",
-    "SpeakerRelabel",
     "TranscriptComplete",
     "Event",
     "utterance_id",
@@ -49,10 +48,9 @@ TARGET_SAMPLE_RATE = 16_000
 Tier = Literal["live", "final"]
 """Which pass produced a transcript.
 
-``live`` output is provisional: it is emitted while audio is still arriving, so
-its speaker labels come from online clustering and may be revised. ``final``
-output is authoritative -- produced after the recording ends, with full-context
-ASR and offline diarization.
+``live`` output is provisional: it is emitted while audio is still arriving and
+may be revised as more context arrives. ``final`` output is authoritative --
+produced after the recording ends, with full-context recognition.
 """
 
 
@@ -123,21 +121,13 @@ class Word(BaseModel):
 
 
 class Utterance(BaseModel):
-    """One contiguous span of speech attributed to one speaker.
-
-    ``speaker`` is a diarization label (``SPEAKER_00``); ``role`` is the clinical
-    interpretation of that label (``dentist``, ``assistant``, ``patient``). They
-    are separate because diarization can be correct while role assignment is
-    still unknown, and conflating them loses that distinction.
-    """
+    """One contiguous span of speech."""
 
     id: str
     start: float
     end: float
     text: str
     words: list[Word] = Field(default_factory=list)
-    speaker: str | None = None
-    role: str | None = None
     language: str | None = None
     confidence: float | None = Field(default=None, ge=0.0, le=1.0)
     is_final: bool = True
@@ -164,13 +154,6 @@ class Transcript(BaseModel):
     @property
     def duration(self) -> float:
         return max((u.end for u in self.utterances), default=0.0)
-
-    def speaker_labels(self) -> list[str]:
-        seen: dict[str, None] = {}
-        for u in self.utterances:
-            if u.speaker is not None:
-                seen.setdefault(u.speaker, None)
-        return list(seen)
 
 
 class Edit(BaseModel):
@@ -241,24 +224,10 @@ class PartialUtterance(BaseModel):
 
 
 class FinalUtterance(BaseModel):
-    """A hypothesis confirmed by the streaming policy. Text is stable from here;
-    the speaker label may still be revised by the final pass."""
+    """A hypothesis confirmed by the streaming policy. Text is stable from here."""
 
     type: Literal["final"] = "final"
     utterance: Utterance
-
-
-class SpeakerRelabel(BaseModel):
-    """Offline diarization disagreed with the online guess for an utterance.
-
-    Emitted during finalization. Consumers that displayed a live label should
-    apply this to stay consistent with the authoritative transcript.
-    """
-
-    type: Literal["relabel"] = "relabel"
-    utterance_id: str
-    speaker: str
-    role: str | None = None
 
 
 class TranscriptComplete(BaseModel):
@@ -269,7 +238,7 @@ class TranscriptComplete(BaseModel):
 
 
 Event = Annotated[
-    PartialUtterance | FinalUtterance | SpeakerRelabel | TranscriptComplete,
+    PartialUtterance | FinalUtterance | TranscriptComplete,
     Field(discriminator="type"),
 ]
 
@@ -283,7 +252,7 @@ def utterance_id(index: int) -> str:
     """Deterministic utterance ids.
 
     Deliberately not a UUID: tests compare transcripts across runs, and a
-    ``SpeakerRelabel`` has to reference an id that survives re-transcription of
-    the same audio.
+    consumer holding an id must still be able to match it after the final tier
+    re-transcribes the same audio.
     """
     return f"u{index:05d}"

@@ -30,7 +30,6 @@ __all__ = [
     "VAD",
     "ASREngine",
     "StreamingPolicy",
-    "Diarizer",
     "Corrector",
     "Sink",
 ]
@@ -118,30 +117,6 @@ class StreamingPolicy(Protocol):
     def flush(self) -> list[Utterance]:
         """Confirm everything still pending, at end of stream."""
         ...
-
-    def reset(self) -> None: ...
-
-
-@runtime_checkable
-class Diarizer(Protocol):
-    """Attributes utterances to speakers.
-
-    Offline implementations need the whole recording and are used for the final
-    tier; online implementations label incrementally and are used live. Both
-    satisfy this interface, which is what lets the pipeline swap one for the
-    other between tiers without the surrounding code changing.
-    """
-
-    name: str
-    online: bool
-
-    def assign(
-        self,
-        utterances: list[Utterance],
-        *,
-        audio: AudioChunk | None = None,
-        num_speakers: int | None = None,
-    ) -> list[Utterance]: ...
 
     def reset(self) -> None: ...
 

@@ -201,11 +201,21 @@ class TestFlagging:
         transcript = Transcript(
             utterances=[
                 Utterance(id="u0", start=0, end=1, text="nothing notable"),
-                Utterance(id="u1", start=1, end=2, text="caries on the mesial"),
+                Utterance(id="u1", start=1, end=2, text="presents with reversible pulpitis"),
             ]
         )
         flags = flag_confusions(transcript, confusions)
         assert flags and all(f.utterance_id == "u1" for f in flags)
+
+    def test_low_severity_terms_are_not_flagged(self, confusions: Confusions) -> None:
+        """mesial/distal are genuinely confusable but appear in nearly every
+        dental note. Flagging them every time buries the rare flag that matters,
+        so they are recorded as low severity and left out of review."""
+        transcript = Transcript(
+            utterances=[Utterance(id="u0", start=0, end=1, text="caries on the mesial surface")]
+        )
+        assert flag_confusions(transcript, confusions) == []
+        assert flag_confusions(transcript, confusions, severities=("high", "low"))
 
     def test_no_flags_for_general_speech(self, confusions: Confusions) -> None:
         transcript = Transcript(

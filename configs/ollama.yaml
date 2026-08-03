@@ -28,9 +28,5 @@ correction:
   # and are never bundled.
   user_codes_path: null
 
-diarization:
-  enabled: false
-  backend: passthrough
-
 flag_confusable: true
 offline_only: true

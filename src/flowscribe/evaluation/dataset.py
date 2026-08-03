@@ -35,7 +35,6 @@ class Sample:
     audio: Path
     reference: str
     language: str | None = None
-    speakers: int | None = None
     metadata: dict[str, object] = field(default_factory=dict)
 
 
@@ -70,7 +69,6 @@ def iter_manifest(path: str | Path) -> Iterator[Sample]:
             audio=audio,
             reference=record["reference"],
             language=record.get("language"),
-            speakers=record.get("speakers"),
             metadata=record.get("metadata", {}),
         )
 

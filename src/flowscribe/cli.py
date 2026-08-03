@@ -19,7 +19,7 @@ import typer
 
 from .config import Config
 from .errors import FlowscribeError
-from .registry import ASR, CORRECTOR, DIARIZER, SINK
+from .registry import ASR, CORRECTOR, SINK
 
 app = typer.Typer(
     name="flowscribe",
@@ -53,8 +53,10 @@ def transcribe(
     config_file: Annotated[
         Path | None, typer.Option("--config", "-c", help="YAML config file.")
     ] = None,
-    diarize: Annotated[bool, typer.Option(help="Attribute utterances to speakers.")] = False,
-    correct: Annotated[bool, typer.Option(help="Run LLM domain correction.")] = False,
+    correct: Annotated[
+        bool | None,
+        typer.Option("--correct/--no-correct", help="Override the config file setting."),
+    ] = None,
     allow_network: Annotated[
         bool,
         typer.Option("--allow-network", help="Permit downloads. Off by default to protect PHI."),
@@ -77,21 +79,16 @@ def transcribe(
         config.final.language = language
     if allow_network:
         config.offline_only = False
-    config.diarization.enabled = diarize
-    config.correction.enabled = correct
+    if correct is not None:
+        config.correction.enabled = correct
 
-    # Correction and diarization each need a real backend; the defaults are
-    # no-ops, so silently producing unchanged output would look like the feature
-    # ran and found nothing to do.
+    # Correction needs a real backend; the default is a no-op, so silently
+    # producing unchanged output would look like the feature ran and found
+    # nothing to do.
     if correct and config.correction.backend in ("null", "passthrough"):
         _fail(
             "--correct needs a corrector backend. Set correction.backend in a config "
             f"file (available: {', '.join(CORRECTOR.names())})."
-        )
-    if diarize and config.diarization.backend in ("null", "passthrough"):
-        _fail(
-            "--diarize needs a diarizer backend. Set diarization.backend in a config "
-            f"file (available: {', '.join(DIARIZER.names())})."
         )
 
     try:
@@ -148,11 +145,9 @@ def listen(
     language: Annotated[str | None, typer.Option(help="Language code.")] = None,
     config_file: Annotated[Path | None, typer.Option("--config", "-c")] = None,
     correct: Annotated[
-        bool, typer.Option(help="Run LLM correction on the final transcript.")
-    ] = False,
-    diarize: Annotated[
-        bool, typer.Option(help="Attribute the final transcript to speakers.")
-    ] = False,
+        bool | None,
+        typer.Option("--correct/--no-correct", help="Override the config file setting."),
+    ] = None,
     allow_network: Annotated[bool, typer.Option("--allow-network")] = False,
     output: Annotated[
         Path | None, typer.Option("--output", "-o", help="Write the final transcript here.")
@@ -194,13 +189,11 @@ def listen(
         config.final.language = language
     if allow_network:
         config.offline_only = False
-    config.correction.enabled = correct
-    config.diarization.enabled = diarize
+    if correct is not None:
+        config.correction.enabled = correct
 
     if correct and config.correction.backend in ("null", "passthrough"):
         _fail("--correct needs a corrector backend; set correction.backend in a config file.")
-    if diarize and config.diarization.backend in ("null", "passthrough"):
-        _fail("--diarize needs a diarizer backend; set diarization.backend in a config file.")
 
     selected: int | str | None = device
     if device is not None and device.isdigit():
@@ -269,8 +262,9 @@ def ui(
     language: Annotated[str | None, typer.Option(help="Language code.")] = None,
     config_file: Annotated[Path | None, typer.Option("--config", "-c")] = None,
     correct: Annotated[
-        bool, typer.Option(help="Run LLM correction on the final transcript.")
-    ] = False,
+        bool | None,
+        typer.Option("--correct/--no-correct", help="Override the config file setting."),
+    ] = None,
     allow_network: Annotated[bool, typer.Option("--allow-network")] = False,
 ) -> None:
     """Serve the browser demo UI.
@@ -296,7 +290,8 @@ def ui(
         config.final.language = language
     if allow_network:
         config.offline_only = False
-    config.correction.enabled = correct
+    if correct is not None:
+        config.correction.enabled = correct
 
     typer.secho(f"demo UI on http://{host}:{port}", fg=typer.colors.CYAN)
     serve(config, host=host, port=port)
@@ -344,8 +339,9 @@ def evaluate_cmd(
         Path | None, typer.Option("--config", "-c", help="YAML config file.")
     ] = None,
     correct: Annotated[
-        bool, typer.Option(help="Also score the corrected transcript against verbatim.")
-    ] = False,
+        bool | None,
+        typer.Option("--correct/--no-correct", help="Override the config file setting."),
+    ] = None,
     lexicon_file: Annotated[
         Path | None, typer.Option("--lexicon", help="Term list for domain WER.")
     ] = None,
@@ -376,7 +372,8 @@ def evaluate_cmd(
         config.final.language = language
     if allow_network:
         config.offline_only = False
-    config.correction.enabled = correct
+    if correct is not None:
+        config.correction.enabled = correct
 
     lexicon = Lexicon.from_file(lexicon_file) if lexicon_file else load_seed_lexicon()
     typer.secho(
@@ -404,7 +401,6 @@ def backends() -> None:
     """List registered backends for each stage."""
     for label, registry in (
         ("asr", ASR),
-        ("diarizer", DIARIZER),
         ("corrector", CORRECTOR),
         ("sink", SINK),
     ):

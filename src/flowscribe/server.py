@@ -65,15 +65,28 @@ def create_app(config: Config) -> Any:
             return {"error": str(exc), "devices": []}
 
     @app.websocket("/stream")
-    async def stream(socket: WebSocket) -> None:
+    async def stream(socket: WebSocket, device: str | None = None) -> None:
         from .audio.microphone import MicrophoneSource
+        from .errors import AudioError
         from .pipeline import Pipeline
 
         await socket.accept()
 
         loop = asyncio.get_running_loop()
         queue: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()
-        source = MicrophoneSource(chunk_seconds=config.chunk_seconds)
+
+        # Device arrives as a query parameter from the page's selector. Numeric
+        # values are PortAudio indices; anything else is treated as a name.
+        selected: int | str | None = None
+        if device not in (None, ""):
+            selected = int(device) if str(device).isdigit() else device
+
+        try:
+            source = MicrophoneSource(device=selected, chunk_seconds=config.chunk_seconds)
+        except AudioError as exc:
+            await socket.send_text(json.dumps({"type": "error", "message": str(exc)}))
+            await socket.close()
+            return
 
         def run_pipeline() -> None:
             """Drive the blocking pipeline on a worker thread.

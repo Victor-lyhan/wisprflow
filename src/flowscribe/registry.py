@@ -8,9 +8,9 @@ adding a backend uses a supported path rather than a fork:
     my-engine = "my_package.engines:MyEngine"
 
 Resolution is lazy. Listing available backends never imports them, so having
-``flowscribe[diarize]`` uninstalled costs nothing until something actually asks
-for the pyannote diarizer -- at which point the missing dependency is reported
-with the extra that provides it, instead of a bare ``ModuleNotFoundError``.
+``flowscribe[parakeet]`` uninstalled costs nothing until something actually
+asks for that engine -- at which point the missing dependency is reported with
+the extra that provides it, instead of a bare ``ModuleNotFoundError``.
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ from .errors import BackendNotFound, MissingDependency
 
 T = TypeVar("T")
 
-__all__ = ["Registry", "ASR", "DIARIZER", "CORRECTOR", "SINK", "VAD_REGISTRY"]
+__all__ = ["Registry", "ASR", "CORRECTOR", "SINK", "VAD_REGISTRY"]
 
 # Which optional extra provides which backend. Used only to turn an ImportError
 # into an actionable message.
@@ -32,9 +32,6 @@ _EXTRA_HINTS: dict[str, str] = {
     "parakeet-onnx": "parakeet",
     "parakeet": "parakeet",
     "mlx-whisper": "mlx",
-    "pyannote": "diarize",
-    "diart": "diarize",
-    "sortformer": "diarize",
     "ollama": "llm",
     "llama-cpp": "llm",
     "silero": "vad",
@@ -100,7 +97,6 @@ class Registry(Generic[T]):
 # One registry per stage. Import these rather than constructing your own so that
 # a runtime `register()` is visible to the pipeline builder.
 ASR: Registry[Any] = Registry("flowscribe.asr")
-DIARIZER: Registry[Any] = Registry("flowscribe.diarizer")
 CORRECTOR: Registry[Any] = Registry("flowscribe.corrector")
 SINK: Registry[Any] = Registry("flowscribe.sink")
 VAD_REGISTRY: Registry[Any] = Registry("flowscribe.vad")

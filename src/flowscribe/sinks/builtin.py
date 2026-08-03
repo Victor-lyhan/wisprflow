@@ -7,7 +7,7 @@ and plain-text formats discard word timings, confidences, and provenance.
 
 from __future__ import annotations
 
-from ..contracts import Transcript, Utterance
+from ..contracts import Transcript
 
 __all__ = ["JsonSink", "JsonlSink", "TextSink", "SrtSink", "VttSink"]
 
@@ -22,12 +22,6 @@ def _timestamp(seconds: float, *, comma: bool = True) -> str:
         millis, secs = 0, secs + 1
     sep = "," if comma else "."
     return f"{hours:02d}:{minutes:02d}:{secs:02d}{sep}{millis:03d}"
-
-
-def _speaker_prefix(utterance: Utterance) -> str:
-    """Prefer the clinical role over the raw diarization label when known."""
-    label = utterance.role or utterance.speaker
-    return f"{label}: " if label else ""
 
 
 class JsonSink:
@@ -51,37 +45,13 @@ class JsonlSink:
 
 
 class TextSink:
-    """Readable plain text, speaker-prefixed when diarization ran.
-
-    Consecutive utterances from one speaker are merged into a paragraph, since a
-    label repeated on every sentence makes a clinical transcript hard to read.
-    """
+    """Readable plain text, one paragraph per utterance."""
 
     name = "text"
     extension = ".txt"
 
     def emit(self, transcript: Transcript) -> str:
-        lines: list[str] = []
-        current: str | None = None
-        buffer: list[str] = []
-
-        for u in transcript.utterances:
-            text = u.text.strip()
-            if not text:
-                continue
-            label = u.role or u.speaker
-            if label != current and buffer:
-                lines.append(" ".join(buffer))
-                buffer = []
-            if label != current:
-                current = label
-                buffer.append(f"{label}: {text}" if label else text)
-            else:
-                buffer.append(text)
-
-        if buffer:
-            lines.append(" ".join(buffer))
-        return "\n\n".join(lines)
+        return "\n\n".join(u.text.strip() for u in transcript.utterances if u.text.strip())
 
 
 class SrtSink:
@@ -96,9 +66,7 @@ class SrtSink:
             text = u.text.strip()
             if not text:
                 continue
-            blocks.append(
-                f"{i}\n{_timestamp(u.start)} --> {_timestamp(u.end)}\n{_speaker_prefix(u)}{text}"
-            )
+            blocks.append(f"{i}\n{_timestamp(u.start)} --> {_timestamp(u.end)}\n{text}")
         return "\n\n".join(blocks)
 
 
@@ -115,7 +83,6 @@ class VttSink:
             if not text:
                 continue
             blocks.append(
-                f"{_timestamp(u.start, comma=False)} --> {_timestamp(u.end, comma=False)}\n"
-                f"{_speaker_prefix(u)}{text}"
+                f"{_timestamp(u.start, comma=False)} --> {_timestamp(u.end, comma=False)}\n{text}"
             )
         return "\n\n".join(blocks)

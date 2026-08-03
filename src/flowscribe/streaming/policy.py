@@ -33,7 +33,6 @@ class Token:
     start: float
     end: float
     confidence: float | None = None
-    speaker: str | None = None
     language: str | None = None
 
     def key(self) -> str:
@@ -63,7 +62,6 @@ def _to_tokens(utterances: list[Utterance]) -> list[Token]:
                     start=w.start,
                     end=w.end,
                     confidence=w.confidence,
-                    speaker=utterance.speaker,
                     language=utterance.language,
                 )
                 for w in utterance.words
@@ -81,7 +79,6 @@ def _to_tokens(utterances: list[Utterance]) -> list[Token]:
                 start=utterance.start + i * span,
                 end=utterance.start + (i + 1) * span,
                 confidence=utterance.confidence,
-                speaker=utterance.speaker,
                 language=utterance.language,
             )
             for i, piece in enumerate(pieces)
@@ -210,7 +207,6 @@ class LocalAgreement:
                 Word(text=t.text.strip(), start=t.start, end=t.end, confidence=t.confidence)
                 for t in tokens
             ],
-            speaker=tokens[0].speaker,
             language=tokens[0].language,
             confidence=sum(confidences) / len(confidences) if confidences else None,
             is_final=final,

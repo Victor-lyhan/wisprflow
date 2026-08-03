@@ -20,7 +20,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .errors import ConfigError
 
-__all__ = ["Config", "ASRConfig", "VADConfig", "DiarizationConfig", "CorrectionConfig"]
+__all__ = ["Config", "ASRConfig", "VADConfig", "CorrectionConfig"]
 
 
 def _default_model_dir() -> Path:
@@ -61,24 +61,6 @@ class VADConfig(BaseModel):
     """Silence needed to close an utterance. Tuned longer than a general-purpose
     default: clinical speech is full of mid-sentence pauses while an operator is
     working, and splitting there fragments terms across utterances."""
-
-    options: dict[str, Any] = Field(default_factory=dict)
-
-
-class DiarizationConfig(BaseModel):
-    enabled: bool = True
-    backend: str = "passthrough"
-    """Offline backend, used for the authoritative pass."""
-
-    online_backend: str = "passthrough"
-    """Incremental backend, used while recording. Its labels are provisional."""
-
-    num_speakers: int | None = None
-    min_speakers: int = 1
-    max_speakers: int = 4
-    """Operatory audio is typically dentist, assistant, and patient; four leaves
-    room for a hygienist or accompanying family member without letting the
-    clustering invent speakers out of handpiece noise."""
 
     options: dict[str, Any] = Field(default_factory=dict)
 
@@ -126,7 +108,6 @@ class Config(BaseSettings):
     backend lands -- it is markedly faster on CPU, which is the Windows target."""
 
     vad: VADConfig = Field(default_factory=VADConfig)
-    diarization: DiarizationConfig = Field(default_factory=DiarizationConfig)
     correction: CorrectionConfig = Field(default_factory=CorrectionConfig)
 
     flag_confusable: bool = True

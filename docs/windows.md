@@ -9,7 +9,6 @@ mypy strict, lint, and — in the `models` job — real faster-whisper and PyAV
 wheels installing and transcribing a file end to end.
 
 **Not verified anywhere**: GPU paths, microphone capture, real clinic audio
-hardware, and diarization (HF-gated). A CI runner has no GPU and no sound card.
 
 There are two ways to get Windows results. Use both: CI catches regressions on
 every push, a real machine catches things CI cannot (GPU, microphone, a clinic's
@@ -135,7 +134,6 @@ here first.
 
 ## Not yet possible to test anywhere
 
-- **Diarization.** `pyannote/speaker-diarization-3.1` is gated on Hugging Face.
   It needs a one-time `huggingface-cli login` plus accepting the model conditions
   on its model page before the pipeline will load at all. Until then the backend
   is written but unrun, on every platform.

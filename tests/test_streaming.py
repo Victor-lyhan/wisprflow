@@ -9,7 +9,7 @@ import pytest
 
 from flowscribe import Config
 from flowscribe.audio import ArrayAudioSource
-from flowscribe.config import ASRConfig, CorrectionConfig, DiarizationConfig
+from flowscribe.config import ASRConfig, CorrectionConfig
 from flowscribe.contracts import (
     AudioChunk,
     FinalUtterance,
@@ -182,7 +182,6 @@ class GrowingASR:
 def quiet_config() -> Config:
     return Config(
         correction=CorrectionConfig(enabled=False),
-        diarization=DiarizationConfig(enabled=False),
         final=ASRConfig(model="tiny.en"),
         chunk_seconds=1.0,
     )
@@ -247,21 +246,3 @@ class TestPipelineStream:
         pipeline = Pipeline(quiet_config, asr=engine, live_asr=engine)
         source = ArrayAudioSource(np.zeros(0, dtype=np.float32))
         assert isinstance(list(pipeline.stream(source))[-1], TranscriptComplete)
-
-    def test_relabel_emitted_when_diarization_disagrees(
-        self, sine: np.ndarray, fake_diarizer
-    ) -> None:
-        """Live labels come from partial audio and are routinely wrong early on;
-        the consumer needs to be told."""
-        from flowscribe.contracts import SpeakerRelabel
-
-        config = Config(
-            correction=CorrectionConfig(enabled=False),
-            diarization=DiarizationConfig(enabled=True, backend="passthrough"),
-            chunk_seconds=1.0,
-        )
-        engine = GrowingASR("tooth number three has a mesial occlusal composite")
-        pipeline = Pipeline(config, asr=engine, live_asr=engine, diarizer=fake_diarizer)
-        events = list(pipeline.stream(ArrayAudioSource(sine, chunk_seconds=1.0)))
-
-        assert any(isinstance(e, SpeakerRelabel) for e in events)

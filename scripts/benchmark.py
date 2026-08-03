@@ -29,12 +29,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from flowscribe.config import (  # noqa: E402
-    ASRConfig,
-    Config,
-    CorrectionConfig,
-    DiarizationConfig,
-)
+from flowscribe.config import ASRConfig, Config, CorrectionConfig  # noqa: E402
 from flowscribe.dental.lexicon import BUILT_PATH, SEED_PATH, load_seed_lexicon  # noqa: E402
 from flowscribe.evaluation import evaluate, load_manifest  # noqa: E402
 
@@ -52,7 +47,6 @@ def run(name: str, backend: str, model: str, manifest: Path, correct: bool) -> d
         correction=CorrectionConfig(
             enabled=correct, backend="ollama" if correct else "passthrough"
         ),
-        diarization=DiarizationConfig(enabled=False),
     )
 
     started = time.monotonic()

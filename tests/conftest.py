@@ -81,31 +81,6 @@ class FakeASREngine:
         pass
 
 
-class FakeDiarizer:
-    """Alternates speakers so attribution is observable in tests."""
-
-    name = "fake"
-    online = False
-
-    def __init__(self, **kwargs: object) -> None:
-        self.kwargs = kwargs
-
-    def assign(
-        self,
-        utterances: list[Utterance],
-        *,
-        audio: AudioChunk | None = None,
-        num_speakers: int | None = None,
-    ) -> list[Utterance]:
-        return [
-            u.model_copy(update={"speaker": f"SPEAKER_{i % 2:02d}"})
-            for i, u in enumerate(utterances)
-        ]
-
-    def reset(self) -> None:
-        pass
-
-
 class FakeCorrector:
     """Applies a fixed substitution and records it as an edit."""
 
@@ -140,11 +115,6 @@ class FakeCorrector:
 @pytest.fixture
 def fake_asr() -> FakeASREngine:
     return FakeASREngine()
-
-
-@pytest.fixture
-def fake_diarizer() -> FakeDiarizer:
-    return FakeDiarizer()
 
 
 @pytest.fixture
