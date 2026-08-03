@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Windows is the production target but development happens on macOS, so the
+  # matrix is not a formality -- it is the only thing that catches
+  # platform-specific breakage before a clinic does. Windows is listed first so
+  # its result is the one you see at a glance.
+  test:
+    name: ${{ matrix.os }} / py${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+        python: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install
+        run: uv sync --python ${{ matrix.python }} --extra dev --extra whisper --extra eval --extra llm
+
+      - name: Lint
+        run: |
+          uv run ruff check src/ tests/ scripts/
+          uv run ruff format --check src/ tests/ scripts/
+
+      - name: Type check
+        run: uv run mypy src/
+
+      - name: Test
+        # Excludes tests that download models; those run in the `models` job on
+        # one platform only, since the download is what is slow, not the code.
+        run: uv run pytest -m "not slow" -q
+
+      # Packaging is verified separately because every test above imports from
+      # the working tree. A wheel missing a subpackage passes all of them and
+      # fails for every user -- which is exactly what happened.
+      - name: Build wheel and import from a clean install
+        run: |
+          uv build --wheel --out-dir dist
+          uv run --isolated --no-project --with dist/*.whl python -c "import flowscribe, flowscribe.audio, flowscribe.asr, flowscribe.dental, flowscribe.streaming, flowscribe.vad, flowscribe.sinks, flowscribe.evaluation, flowscribe.correct, flowscribe.diarize; from flowscribe.dental import load_seed_lexicon; print('wheel ok:', len(load_seed_lexicon()), 'lexicon terms')"
+
+  # Exercises the real ASR backend end to end. Windows-only on purpose: the
+  # engines are portable Python, so what actually needs proving here is that
+  # CTranslate2 and PyAV wheels resolve and run on the production platform.
+  models:
+    name: windows / real models
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install
+        run: uv sync --extra dev --extra whisper --extra eval
+
+      - name: Cache model weights
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-tiny-en-${{ runner.os }}
+
+      - name: Run backend contract tests against faster-whisper
+        run: uv run pytest -m slow -q
+
+      - name: Transcribe a real file
+        run: |
+          uv run python scripts/tts.py --text "Tooth number three has a mesial occlusal distal composite restoration." --out ci-audio.wav
+          uv run flowscribe transcribe ci-audio.wav --model tiny.en --language en --allow-network --format text

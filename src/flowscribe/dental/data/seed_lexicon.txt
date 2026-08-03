@@ -1,0 +1,322 @@
+# Seed dental lexicon -- generic clinical terminology.
+#
+# This is a bootstrap list so that domain-WER is measurable from day one. It is
+# NOT the finished lexicon: the full build pulls from MeSH (dental branch),
+# RxNorm (anaesthetics and antibiotics), and SNOMED CT via UMLS.
+#
+# Everything here is ordinary anatomical and clinical vocabulary. No CDT
+# procedure codes and no SNODENT content -- those are ADA copyright and require
+# a commercial licence to redistribute.
+#
+# One term per line. Multi-word terms are matched as phrases. '#' starts a comment.
+
+# --- surfaces and directions ---
+mesial
+distal
+occlusal
+buccal
+lingual
+incisal
+facial
+palatal
+apical
+coronal
+gingival
+interproximal
+cervical
+proximal
+labial
+vestibular
+mesiobuccal
+distobuccal
+mesiolingual
+distolingual
+mesio-occlusal
+disto-occlusal
+
+# --- anatomy ---
+# "tooth"/"teeth" are here so candidate selection treats them as known-good.
+# Absent, they were queried as suspicious words and matched "root"/"mouth" at
+# high orthographic similarity, crowding out real candidates.
+tooth
+teeth
+quadrant
+arch
+anterior
+posterior
+surface
+molar
+premolar
+bicuspid
+canine
+cuspid
+incisor
+cusp
+enamel
+dentin
+dentine
+pulp
+cementum
+periodontium
+periodontal ligament
+gingiva
+alveolar
+alveolar bone
+mandible
+mandibular
+maxilla
+maxillary
+furcation
+apex
+root
+crown
+frenum
+frenulum
+papilla
+sulcus
+tuberosity
+ridge
+torus
+tori
+condyle
+ramus
+symphysis
+retromolar
+mucosa
+mucogingival
+attached gingiva
+periapical
+
+# --- conditions ---
+caries
+carious
+gingivitis
+periodontitis
+periodontal disease
+abscess
+pericoronitis
+malocclusion
+bruxism
+xerostomia
+edentulous
+partially edentulous
+attrition
+abfraction
+abrasion
+erosion
+recession
+mobility
+calculus
+plaque
+biofilm
+diastema
+hyperplasia
+necrosis
+pulpitis
+irreversible pulpitis
+reversible pulpitis
+granuloma
+cyst
+fistula
+suppuration
+halitosis
+leukoplakia
+lichen planus
+ankylosis
+impaction
+impacted
+supernumerary
+hypoplasia
+fluorosis
+sensitivity
+percussion
+palpation
+
+# --- procedures ---
+prophylaxis
+prophy
+scaling
+root planing
+scaling and root planing
+extraction
+exodontia
+endodontic
+endodontics
+root canal
+restoration
+restorative
+composite
+amalgam
+veneer
+inlay
+onlay
+pontic
+abutment
+implant
+osseointegration
+apicoectomy
+pulpotomy
+pulpectomy
+frenectomy
+gingivectomy
+gingivoplasty
+alveoloplasty
+obturation
+cementation
+debridement
+curettage
+sealant
+fluoride
+fluoride varnish
+bonding
+etching
+impression
+occlusion
+articulation
+equilibration
+crown preparation
+crown prep
+temporization
+core buildup
+post and core
+bone graft
+sinus lift
+ridge augmentation
+socket preservation
+periodontal maintenance
+recall
+recare
+
+# --- materials ---
+porcelain
+zirconia
+lithium disilicate
+gutta percha
+gutta-percha
+glass ionomer
+resin ionomer
+etchant
+bonding agent
+composite resin
+alginate
+polyvinyl siloxane
+zinc oxide eugenol
+calcium hydroxide
+mineral trioxide aggregate
+sodium hypochlorite
+articulating paper
+matrix band
+wedge
+
+# --- pharmacology ---
+lidocaine
+articaine
+mepivacaine
+prilocaine
+bupivacaine
+epinephrine
+levonordefrin
+benzocaine
+chlorhexidine
+amoxicillin
+clindamycin
+penicillin
+metronidazole
+azithromycin
+ibuprofen
+acetaminophen
+nitrous oxide
+carpule
+anesthetic
+anaesthetic
+infiltration
+block
+inferior alveolar nerve block
+mandibular block
+vasoconstrictor
+
+# --- imaging and instruments ---
+radiograph
+radiographic
+bitewing
+panoramic
+panorex
+cephalometric
+cone beam
+periapical radiograph
+full mouth series
+explorer
+curette
+scaler
+ultrasonic scaler
+handpiece
+high speed
+slow speed
+bur
+matrix
+retractor
+rubber dam
+saliva ejector
+suction
+evacuator
+mirror
+probe
+periodontal probe
+
+# --- periodontics ---
+probing
+probing depth
+pocket depth
+pocket
+bleeding on probing
+clinical attachment level
+attachment loss
+keratinized tissue
+biologic width
+mucogingival junction
+
+# --- prosthodontics ---
+denture
+complete denture
+partial denture
+removable partial
+fixed partial
+bridge
+coping
+framework
+reline
+rebase
+occlusal scheme
+vertical dimension
+centric relation
+centric occlusion
+maximum intercuspation
+
+# --- orthodontics ---
+bracket
+archwire
+ligature
+retainer
+aligner
+elastics
+band
+separator
+expander
+headgear
+overjet
+overbite
+crossbite
+openbite
+crowding
+spacing
+
+# --- temporomandibular ---
+temporomandibular
+temporomandibular joint
+tmj
+tmd
+myofascial
+trismus
+crepitus
+clicking
+deviation

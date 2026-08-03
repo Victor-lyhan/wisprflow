@@ -1,0 +1,63 @@
+# Clinically significant confusion sets.
+#
+# Each line groups terms that a recognizer confuses with each other AND that are
+# all individually valid dental vocabulary. That combination is what makes them
+# dangerous: nothing about the output looks wrong. Similarity search cannot find
+# these -- "reversible pulpitis" is a real diagnosis, correctly spelled, present
+# in the lexicon -- so when one member appears, the others are surfaced to the
+# corrector as alternatives to weigh against the audio context.
+#
+# This targets the "clinically significant error" class that published dental ASR
+# evaluation found in every system tested, where headline word error rates looked
+# acceptable.
+#
+# Format: comma-separated group, one group per line. Order carries no meaning.
+
+# Diagnosis inversions -- opposite treatment implications
+reversible pulpitis, irreversible pulpitis
+vital, nonvital
+symptomatic, asymptomatic
+acute, chronic
+
+# Directional opposites -- wrong tooth surface
+mesial, distal
+buccal, lingual
+facial, palatal
+occlusal, incisal
+supragingival, subgingival
+anterior, posterior
+maxillary, mandibular
+mesiobuccal, distobuccal
+mesiolingual, distolingual
+
+# Magnitude and kind inversions
+hyperplasia, hypoplasia
+hypertrophy, atrophy
+localized, generalized
+
+# Dentition
+primary, permanent
+deciduous, succedaneous
+
+# Procedures with different scope
+pulpotomy, pulpectomy
+gingivectomy, gingivoplasty
+scaling, root planing, debridement
+inlay, onlay
+reline, rebase
+
+# Materials confused by sound
+composite, compomer
+amalgam, alloy
+
+# Perio severity
+gingivitis, periodontitis
+
+# Anaesthetics -- different drugs, similar sound
+lidocaine, prilocaine
+mepivacaine, bupivacaine
+epinephrine, levonordefrin
+
+# Radiographic
+periapical, panoramic
+bitewing, periapical
